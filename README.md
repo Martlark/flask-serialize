@@ -113,3 +113,73 @@ Create or update from a WTF form:
                     title='Edit or Create item',
                     form=form
                 )
+
+Options
+=======
+
+Exclude fields
+--
+
+List of model field names to not serialize at all.
+
+    exclude_serialize_fields = []
+    
+List of model field names to not serialize when return as json.
+    
+    exclude_json_serialize_fields = []
+
+fields to be updated
+--
+
+List of model fields to be read from a form or json when updating an object.  Normally
+admin fields such as login_counts or security fields are excluded.
+
+
+    update_fields = []
+
+fields used when creating
+--
+
+List of model fields to be read from a form when creating an object.
+
+    create_fields = []
+
+fields used to set the update date/time
+--
+
+List of fields on the model to be set when updating/creating 
+with datetime.datetime.now()
+
+Default is:
+
+    timestamp_fields = ['updated', 'timestamp']
+
+list of property names that are relationships to be included in serialization
+--
+    relationship_fields = []
+
+In default operation relationships in models are not serialized.  Add any
+relationship property name here to be included in serialization.
+
+add your own serialization converters here
+--
+
+column_type_converters = {}
+
+Where the key is the column type name of the database column 
+and the value is a method to provide the conversion.
+
+Example:
+
+To convert VARCHAR2 to a string.
+
+    column_type_converters['VARCHAR2'] = lambda v: str(v)
+
+add or replace update/create conversion types (to database)
+--
+Default is:
+
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+
+type: a python object type
+method: a lambda or method to provide the conversion to a database acceptable value.
