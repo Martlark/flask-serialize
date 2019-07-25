@@ -23,16 +23,22 @@ Simple usage:
         
         # serializer fields
         create_fields = update_fields = ['setting_type', 'value', 'key', 'active']
+
+        # checks if Flask-Serialize can delete
+        def can_delete(self):
+            if len(self.value) = 1234:
+                raise Exception('Deletion not allowed.  Magic value length!')
     
-        def __repr__(self):
-            return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
-    
+        # checks if Flask-Serialize can create/update
         def verify(self, create=False):
             if not self.key or len(self.key) < 1:
                 raise Exception('Missing key')
     
             if not self.setting_type or len(self.setting_type) < 1:
                 raise Exception('Missing setting type')
+    
+        def __repr__(self):
+            return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
 
 In your routes:
 ---------------
@@ -89,7 +95,7 @@ Create or update from a WTF form:
                 if item_id:
                     try:
                         item.request_update_form()
-                        flash(Your changes have been saved.')
+                        flash('Your changes have been saved.')
                     except Exception as e:
                         flash(str(e), category='danger')
                     return redirect(url_for('setting_edit', item_id=item_id))
