@@ -70,8 +70,7 @@ Javascript (KnockoutJS Example):
 
 Flask route:  
     
-    @bp.route('/update_setting/<int:item_id>', methods=['PUT'])
-    @admin_required
+    @app.route('/update_setting/<int:item_id>', methods=['PUT'])
     def update_setting(item_id):
         return Setting.get_delete_put(item_id)
 
@@ -90,14 +89,14 @@ Create or update from a WTF form:
                 if item_id:
                     try:
                         item.request_update_form()
-                        flash(_('Your changes have been saved.'))
+                        flash(Your changes have been saved.')
                     except Exception as e:
                         flash(str(e), category='danger')
                     return redirect(url_for('setting_edit', item_id=item_id))
                 else:
                     try:
                         new_item = Setting.request_create_form()
-                        flash(_('Setting created.'))
+                        flash('Setting created.')
                         return redirect(url_for('setting_edit', item_id=new_item.id))
                     except Exception as e:
                         flash('Error creating item: ' + str(e))
