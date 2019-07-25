@@ -40,8 +40,9 @@ class FlaskSerializeMixin:
     @classmethod
     def get_by_user_or_404(cls, item_id, user):
         """
-        return the object with the given id that is owned by the current user
+        return the object with the given id that is owned by the given user
         :param item_id: object id
+        :param param: the user to use as a filter, assumes relationship name is user
         :return: the object
         :throws: 404 exception if not found
         """

@@ -171,15 +171,58 @@ and the value is a method to provide the conversion.
 
 Example:
 
-To convert VARCHAR2 to a string.
+To convert VARCHAR2 to a string:
 
     column_type_converters['VARCHAR2'] = lambda v: str(v)
 
 add or replace update/create conversion types (to database)
 --
+A list of dicts that specify conversions.
+
 Default is:
 
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
 
-type: a python object type
-method: a lambda or method to provide the conversion to a database acceptable value.
+* type: a python object type  
+* method: a lambda or method to provide the conversion to a database acceptable value.
+
+Mixin Helper methods and properties
+=============================
+
+    @property
+    def as_dict(self):
+        """
+        the sql object as a dict without the excluded fields
+        :return: dict
+        """
+        
+    @property
+    def as_json(self):
+        """
+        the sql object as a json object without the excluded fields
+        :return: json object
+        """
+
+    def dict_list(cls, query_result):
+        """
+        return a list of dictionary objects from the sql query result
+        :param query_result: sql alchemy query result
+        :return: list of dict objects
+        """
+        
+    @classmethod
+    def json_list(cls, query_result):
+        """
+        return a list in json format from the query_result
+        :param query_result: sql alchemy query result
+        :return: json list of results
+        """
+        return jsonify([item.__as_exclude_json_dict() for item in query_result])
+
+Example:
+
+    @bp.route('/address/list', methods=['GET'])
+    @login_required
+    def address_list():
+        items = Address.query.filter_by(user=current_user)
+        return Address.json_list(items)
