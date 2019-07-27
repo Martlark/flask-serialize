@@ -26,7 +26,7 @@ Simple usage:
 
         # checks if Flask-Serialize can delete
         def can_delete(self):
-            if len(self.value) = 1234:
+            if len(self.value) == 1234:
                 raise Exception('Deletion not allowed.  Magic value length!')
     
         # checks if Flask-Serialize can create/update
@@ -46,31 +46,31 @@ In your routes:
 Get a single item as json.
 
     @app.route('/get_setting/<item_id>', METHODS=['GET'])
-    def get_setting( item_id )
+    def get_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
 Delete a single item.
 
     @app.route('/delete_setting/<item_id>', METHODS=['DELETE'])
-    def delete_setting( item_id )
+    def delete_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
 Get all items as a json list.
 
     @app.route('/get_setting_all', METHODS=['GET'])
-    def get_setting_all()
+    def get_setting_all():
         return Setting.get_delete_put()
 
 Updating from a json object in the flask put request
     
-Javascript (KnockoutJS Example):
+JQuery:
 
     put() {
         return $.ajax({
-            url: `/update_setting/${this.id()}`,
+            url: `/update_setting/${this.id}`,
             method: 'PUT',
             contentType: "application/json",
-            data: ko.toJSON(this),
+            data: {setting_type:'x',value:'100'},
         }).then(() => alert('updated'));
     }
 

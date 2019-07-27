@@ -162,13 +162,15 @@ class FlaskSerializeMixin:
 
     def request_update_form(self):
         """
-        update the item using form data from the request object
-        throws error if missing things.
+        update/create the item using form data from the request object
+        only present fields are updated
+        throws error if validation fails
         :return: nothing
         """
         for field in self.update_fields:
-            value = request.form.get(field)
-            setattr(self, field, self.__convert_value(value))
+            if field in request.form:
+                value = request.form.get(field)
+                setattr(self, field, self.__convert_value(value))
 
         self.verify()
         self.update_timestamp()
@@ -258,15 +260,19 @@ class FlaskSerializeMixin:
         get, delete or update with JSON a single model item
         :param item_id: the key of the item - if none and method is get returns all items
         :param user: user to add as query item.
-        :return: json object: {error, message}, or the item.  message == 'ok' for correct operation
+        :return: json object: {error, message}, or the item.  error == None for correct operation
         """
         item = None
-        if user:
+        if user and item_id:
             item = cls.get_by_user_or_404(item_id, user=user)
-        elif item_id:
+        if item_id:
             item = cls.query.get(item_id)
         elif request.method == 'GET':
-            return cls.json_list(cls.query.all())
+            # get a list of items
+            if user:
+                return cls.json_list(cls.query.filter_by(user=user))
+            else:
+                return cls.json_list(cls.query.all())
 
         if not item:
             abort(404)
@@ -284,7 +290,7 @@ class FlaskSerializeMixin:
             except Exception as e:
                 return jsonify(dict(error=str(e), message=''))
 
-            return jsonify(dict(error=None, message='ok'))
+            return jsonify(dict(error=None, message='Deleted'))
 
         # PUT save the modified item
         try:
@@ -292,4 +298,4 @@ class FlaskSerializeMixin:
         except Exception as e:
             return jsonify(dict(error=str(e), message=''))
 
-        return jsonify(dict(error=None, message='ok'))
+        return jsonify(dict(error=None, message='Updated'))
