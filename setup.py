@@ -23,7 +23,7 @@ setup(
 
     version=VERSION,
 
-    description='Easy to sue JSON serialization and update/create for Flask and SQLAlchemey.',
+    description='Easy to use JSON serialization and update/create for Flask and SQLAlchemey.',
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/x-rst',
 
