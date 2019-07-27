@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, redirect, url_for, render_template_string
-from flask_serialize import FlaskSerializeMixin
+from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
 from wtforms import StringField
 
@@ -84,6 +84,13 @@ def setting_edit(item_id=None):
 FlaskSerializeMixin.db = db
 
 
+class SubSetting(FlaskSerializeMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
+    flong = db.Column(db.String(120), index=True, default='flang')
+
+
 class Setting(FlaskSerializeMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -93,11 +100,14 @@ class Setting(FlaskSerializeMixin, db.Model):
     active = db.Column(db.String(1), default='y')
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
+    # relationships
+    sub_settings = db.relationship('SubSetting', backref='setting', lazy='dynamic')
 
     # serializer fields
     create_fields = update_fields = ['setting_type', 'value', 'key', 'active']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
+    relationship_fields = ['sub_settings']
 
     # checks if Flask-Serialize can delete
     def can_delete(self):
@@ -143,6 +153,27 @@ def test_get_all(client):
     json_settings = json.loads(rv.data)
     assert len(json_settings) == 1
     assert json_settings[0]['key'] == key
+
+
+def test_relationships(client):
+    rv = client.get('/get_setting_all')
+    assert rv.status_code == 200
+    assert len(json.loads(rv.data)) == 0
+    key = 'test-key'
+    # test add
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    # add relation
+    setting = Setting.query.filter_by(setting_type='test').first()
+    sub_setting = SubSetting(flong='blong', setting=setting)
+    db.session.add(sub_setting)
+    db.session.commit()
+    # see if returned
+    rv = client.get('/get_setting_all')
+    assert rv.status_code == 200
+    json_settings = json.loads(rv.data)
+    assert len(json_settings) == 1
+    assert len(json_settings[0]['sub_settings']) == 1
+    assert json_settings[0]['sub_settings'][0]['flong'] == 'blong'
 
 
 def test_can_delete(client):

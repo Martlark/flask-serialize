@@ -1,3 +1,5 @@
 *.pyc
 .idea
 venv*
+dist
+*.egg-info
