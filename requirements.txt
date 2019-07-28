@@ -4,3 +4,6 @@ EasyDict
 pytest
 flask-sqlalchemy
 flask-wtf
+setuptools
+wheel
+twiner

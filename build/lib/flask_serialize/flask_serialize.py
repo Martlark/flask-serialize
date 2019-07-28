@@ -122,7 +122,7 @@ class FlaskSerializeMixin:
         field_list += [EasyDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
         exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
         # add custom converters
-        for converter, method in self.column_type_converters:
+        for converter, method in self.column_type_converters.items():
             __converters[converter] = method
 
         for c in field_list:
@@ -136,7 +136,7 @@ class FlaskSerializeMixin:
 
             if c_type in __converters and v is not None:
                 try:
-                    d[c.name] = __converters[c_type](v)
+                    d[c.name] = __converters[c_type](v) if __converters[c_type] else v
                 except Exception as e:
                     d[c.name] = 'Error:{}  Failed to covert using {}'.format(e, c_type)
             elif v is None:
@@ -165,7 +165,7 @@ class FlaskSerializeMixin:
         update/create the item using form data from the request object
         only present fields are updated
         throws error if validation fails
-        :return: nothing
+        :return: True when complete
         """
         for field in self.update_fields:
             if field in request.form:
@@ -176,6 +176,7 @@ class FlaskSerializeMixin:
         self.update_timestamp()
         self.db.session.add(self)
         self.db.session.commit()
+        return True
 
     @classmethod
     def request_create_form(cls):

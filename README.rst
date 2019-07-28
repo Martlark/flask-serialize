@@ -1,222 +1,288 @@
-IpBan: HTTP spam security for Flask
-=========================================
+flask-serialize
+===============
+Read / Write JSON serialization of models for Flask applications using SQLAlchemy
+---------------------------------------------------------------------------------
 
 |PyPI Version|
 
-IpBan is a Flask extension that can help protect against ip sources spamming url requests
-against unknown pages or attempts to exploit URLs.  Often this is to search for security issues.
+Add as a Mixin (FlaskSerializeMixin).  This adds the properties and methods for serialization.
 
-The default configuration:
+Example:
+========
 
-- 20 attempts before ban
-- 1 day blocking period
-
-Once an ip address is banned any attempt to access a web address on your site from that ip will
-result in a 403 forbidden status response.  After the default 1 day blocking period of no access
-attempts the ban will be lifted.  Any access attempt during the ban period will extend the ban period
-by the `ban_seconds` amount.
-
-Ip addresses can be entered for banning by the api.
-
-Url patterns can be entered to be excluded from ban calculations by the api.
-
-Url patterns can be entered for banning by the api.
-
-Installation & Basic Usage
---------------------------
-
-Install via `pip <https://pypi.python.org/pypi/pip>`_:
-
-::
-
-    pip install flask-ipban
-
-After installing, wrap your Flask app with an ``IpBan``, or call ip_ban.init_app(app):
+Model setup:
+------------
 
 .. code:: python
 
-    from flask import Flask
-    from flask_ipban import IpBan
+    # example database model
+    from flask_serialize import FlaskSerializeMixin
 
-    app = Flask(__name__)
-    ip_ban = IpBan(ban_seconds=200)
-    ip_ban.init_app(app)
+    # required to set class var db for writing to a database
+    from app import db
 
+    FlaskSerializeMixin.db = db
 
-The repository includes a small example application.
+    class Setting(FlaskSerializeMixin, db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+    
+        setting_type = db.Column(db.String(120), index=True, default='misc')
+        key = db.Column(db.String(120), index=True)
+        value = db.Column(db.String(30000), default='')
+        active = db.Column(db.String(1), default='y')
+        created = db.Column(db.DateTime, default=datetime.utcnow)
+        updated = db.Column(db.DateTime, default=datetime.utcnow)
+        
+        # serializer fields
+        create_fields = update_fields = ['setting_type', 'value', 'key', 'active']
+
+        # checks if Flask-Serialize can delete
+        def can_delete(self):
+            if self.value == '1234':
+                raise Exception('Deletion not allowed.  Magic value!')
+    
+        # checks if Flask-Serialize can create/update
+        def verify(self, create=False):
+            if not self.key or len(self.key) < 1:
+                raise Exception('Missing key')
+    
+            if not self.setting_type or len(self.setting_type) < 1:
+                raise Exception('Missing setting type')
+    
+        def __repr__(self):
+            return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
+
+Routes setup:
+---------------
+
+Get a single item as json.
+
+.. code:: python
+
+    @app.route('/get_setting/<item_id>', METHODS=['GET'])
+    def get_setting( item_id ):
+        return Setting.get_delete_put(item_id)
+
+Delete a single item.
+
+.. code:: python
+
+    @app.route('/delete_setting/<item_id>', METHODS=['DELETE'])
+    def delete_setting( item_id ):
+        return Setting.get_delete_put(item_id)
+
+Get all items as a json list.
+
+.. code:: python
+
+    @app.route('/get_setting_all', METHODS=['GET'])
+    def get_setting_all():
+        return Setting.get_delete_put()
+
+Updating from a json object in the flask put request
+    
+JQuery:
+
+.. code:: javascript
+
+    function put(setting_id) {
+        return $.ajax({
+            url: `/update_setting/${setting_id}`,
+            method: 'PUT',
+            contentType: "application/json",
+            data: {setting_type:'x',value:'100'},
+        }).then(() => alert('updated'));
+    }
+
+Flask route:  
+
+.. code:: python
+
+    @app.route('/update_setting/<int:item_id>', methods=['PUT'])
+    def update_setting(item_id):
+        return Setting.get_delete_put(item_id)
+
+Create or update from a WTF form:
+
+.. code:: python
+
+        @app.route('/setting_edit/<int:item_id>', methods=['POST'])
+        @app.route('/setting_add', methods=['POST'])    
+        def setting_edit(item_id=None):
+            if item_id:
+                item = Setting.query.get_or_404(item_id)
+            else:
+                item = {}
+            form = EditForm(obj=item)
+        
+            if form.validate_on_submit():
+                if item_id:
+                    try:
+                        item.request_update_form()
+                        flash('Your changes have been saved.')
+                    except Exception as e:
+                        flash(str(e), category='danger')
+                    return redirect(url_for('setting_edit', item_id=item_id))
+                else:
+                    try:
+                        new_item = Setting.request_create_form()
+                        flash('Setting created.')
+                        return redirect(url_for('setting_edit', item_id=new_item.id))
+                    except Exception as e:
+                        flash('Error creating item: ' + str(e))
+                        
+            return render_template(
+                    'setting_edit.html',
+                    item=item,
+                    title='Edit or Create item',
+                    form=form
+                )
 
 Options
--------
+=======
 
--  ``app``,  Flask application to monitor.  Use ip_ban.init_app(app) to intialise later on.
--  ``ban_count``, default ``20``, Number of observations before banning.
--  ``ban_seconds``, default ``3600*24 (one day)``, Number of seconds ip address is banned.
--  ``persist``, default ``False``, Persist ban list between restarts, using records in the report_dir folder.
--  ``report_dir``, default ``None``, Override the location of persistence and report files.
--  ``ipc``, default ``False``, Allow multiple instances of ip_ban to cross communicate using the ``report_dir``.
--  ``secret_key``, default ``flask secret key``, Key to sign reports in the ``report_dir``.
--  ``ip_header``, default ``None``, Optional name of request header that contains the ip for use behind proxies when in a docker/kube hosted env.
--  ``abuse_IPDB_config``, default ``None``, config {key=, report=False, load=False} to a AbuseIPDB.com account.  Blocked ip addresses via url nuisance matching will be reported.
+Exclude fields
+--------------
 
-Config by env variable overrides options
-########################################
-
-These environment variables will override options from the initialisation.
-
--  IP_BAN_LIST_COUNT - number of observations before 403 exception
--  IP_BAN_LIST_SECONDS - number of seconds to retain memory of IP
-
-
-Methods
--------
-
--  ``init_app(app)`` - Initialise and start ip_ban with the given Flask application.
--  ``block(ip_address, permanent=False)`` - block the specific address, optionally forever
--  ``add(ip=None, url=None, reason='404')`` - increase the observations for the current request ip or given ip address
-
-Example for add:
+List of model field names to not serialize at all.
 
 .. code:: python
 
-    from flask import Flask
-    from flask_ipban import IpBan
-
-    app = Flask(__name__)
-    ip_ban = IpBan(app)
-
-    @route('/login', methods=['GET','POST']
-    def login:
-        # ....
-        # increment block if wrong passwords to prevent password stuffing
-        # ....
-        if request.method == 'POST':
-            if request.arg.get('password') != 'secret':
-                ip_ban.add(reason='bad password')
-
--  ``remove(ip_address)`` - remove the given ip address from the ban list.  Returns true if ban removed.
--  ``url_pattern_add('reg-ex-pattern', match_type='regex')`` - exclude any url matching the pattern from checking
-
-
-Example of url_pattern_add:
+    exclude_serialize_fields = []
+    
+List of model field names to not serialize when return as json.
 
 .. code:: python
 
-    from flask import Flask
-    from flask_ipban import IpBan
+    exclude_json_serialize_fields = []
 
-    app = Flask(__name__)
-    ip_ban = IpBan(app)
-    ip_ban.url_pattern_add('^/whitelist$', match_type='regex')
-    ip_ban.url_pattern_add('/flash/dance', match_type='string')
+Updating fields specification
+-----------------------------
 
-
--  ``url_pattern_remove('reg-ex-pattern')`` - remove pattern from the url whitelist
--  ``url_block_pattern_add('reg-ex-pattern', match_type='regex')`` - add any url matching the pattern to the block list. match_type can be 'string' or 'regex'.  String is direct match.  Regex is a regex pattern.
--  ``url_block_pattern_remove('reg-ex-pattern')`` - remove pattern from the url block list
--  ``ip_whitelist_add('ip-address')`` - exclude the given ip from checking
--  ``ip_whitelist_remove('ip-address')`` - remove the given ip from the ip whitelist
-
-
-Example of ip_whitelist_add
+List of model fields to be read from a form or json when updating an object.  Normally
+admin fields such as login_counts or security fields are excluded.
 
 .. code:: python
 
-    from flask import Flask
-    from flask_ipban import IpBan
+    update_fields = []
 
-    app = Flask(__name__)
-    ip_ban = IpBan(app)
-    ip_ban.whitelist_add('127.0.0.1')
+Creation fields used when creating specification
+------------------------------------------------
 
+List of model fields to be read from a form when creating an object.
 
--  ``load_nuisances(file_name=None)`` - add a list of nuisances to url pattern block list from a file.  See below for more information.
+.. code:: python
+
+    create_fields = []
+
+Update date/time fields specification
+-------------------------------------
+
+List of fields on the model to be set when updating/creating 
+with datetime.datetime.now()
+
+Default is:
+
+.. code:: python
+
+    timestamp_fields = ['updated', 'timestamp']
+
+Relationships list of property names that are to be included in serialization
+-----------------------------------------------------------------------------
+
+.. code:: python
+
+    relationship_fields = []
+
+In default operation relationships in models are not serialized.  Add any
+relationship property name here to be included in serialization.
+
+Serialization converters
+------------------------
+There are three built in converters to convert data from the database
+to a good format for serialization:
+
+* DATETIME - Removes the fractional second part and makes it a string
+* PROPERTY - Enumerates and returns model added properties
+* RELATIONSHIP - Deals with children model items.
+
+Set one of these to None or a value to remove or replace it's behaviour.
+
+column_type_converters = {}
+
+Where the key is the column type name of the database column 
+and the value is a method to provide the conversion.
+
+Example:
+
+To convert VARCHAR(100) to a string:
+
+.. code:: python
+
+    column_type_converters['VARCHAR(100)'] = lambda v: str(v)
+
+Conversion types (to database) add or replace update/create
+--
+A list of dicts that specify conversions.
+
+Default is:
+
+.. code:: python
+
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+
+* type: a python object type  
+* method: a lambda or method to provide the conversion to a database acceptable value.
+
+Mixin Helper methods and properties
+===================================
+
+.. code:: python
+
+    @property
+    def as_dict(self):
+        """
+        the sql object as a dict without the excluded fields
+        :return: dict
+        """
+        
+    @property
+    def as_json(self):
+        """
+        the sql object as a json object without the excluded fields
+        :return: json object
+        """
+
+    def dict_list(cls, query_result):
+        """
+        return a list of dictionary objects from the sql query result
+        :param query_result: sql alchemy query result
+        :return: list of dict objects
+        """
+        
+    @classmethod
+    def json_list(cls, query_result):
+        """
+        return a list in json format from the query_result
+        :param query_result: sql alchemy query result
+        :return: json list of results
+        """
 
 Example:
 
 .. code:: python
 
-    ip_ban = IpBan()
-    app = Flask(__name__)
-    ip_ban.init_app(app)
-    ip_ban.load_nuisances()
-
-
-Url patterns
-------------
-
-Url matching match_type can be 'string' or 'regex'.  String is direct match.  Regex is a regex pattern.
-
-Nuisance file
--------------
-
-ip_ban includes a file of common web nuisances that should not be allowed on a flask site.  It includes:
-
-- Blocking any non flask extension such as .jsp, .asp etc.
-- Known hacking urls.
-
-Nuisance urls are only checked as a result of a 404.  If you have legitimate routes
-that use nuisance url patterns they won't result in a block.
-
-Load them by calling ip_ban.load_nuisances()
-
-You can add your own nuisance yaml file by calling with the parameter file_name=.
-
-See the nuisance.yaml file in the source for formatting and details.
-
-IPC and persistence
--------------------
-
-When you have multiple applications or processes serving a web application it can be handy to share
-any abuse ip between processes.  The ipc option allows this.
-
-Set ipc to True to allow writing out each 404/ban event to a file in the ``record_dir`` folder, which has a default in linux of
-``/tmp/flask-ip-ban``.  This folder has to be writable by the process running your app.  Obviously if you use multiple
-different apps they can share ip_ban reporting.  Each record is signed with the ``secret_key``, so this must be shared
-amongst all applications that use the ``record_dir`` folder.  The ``secret_key`` is by default the flask secret key.
-
-This folder and secret key is also used by the persistence feature.
-
-Only ip records using the `block`, `add` and `remove` methods or by 404; are persisted or shared.  Any whitelisting or 
-pattern bans are not persisted/shared and must be done for each instance of your application.
-
-IP Header
----------
-When running a flask app in a docker hosted environment (or similar) the ip address will be the virtual
-adapter ip and won't change for differing requests.  Use your proxy server to set the real IP address in a header
-so that ip-ban can find what it really is.  For apache:
-
-
-    ``RequestHeader set X_TRUE_IP "%{REMOTE_ADDR}s"``
-
-    ``ProxyPass / http://localhost:8080/``
-
-    ``ProxyPassReverse / http://localhost:8080/``
-
-Then when initializing ip_ban set the header name using the parameter ``ip_header``, in this example: ip_header='X_TRUE_IP'.
-
-Abuse IPDB
-----------
-
-see: https://docs.abuseipdb.com/#introduction
-
-You can setup flask-ipban so it will auto report url hacking attempts to the Abuse IPDB.  Or you can
-load the Abuse IPDB list of blocked ip address on start.  Warning!  Loading takes a while for the default 10000 records.
-
-*Config*
-
-abuse_IPDB_config = {key=, report=False, load=False, debug=False}
-
-* key - your abuse IPDB api v2 key
-* report - True/False (default is False) - report hack attempts to the DB.
-* load - True/False (default is False) - load and block already blocked ip addresses from the DB on startup
-* debug - True/False (default is False) - debug mode, uses ip 127.0.0.1.
-
+    @bp.route('/address/list', methods=['GET'])
+    @login_required
+    def address_list():
+        items = Address.query.filter_by(user=current_user)
+        return Address.json_list(items)
 
 Licensing
 ---------
 
 - Apache 2.0
 
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/flask-ipban.svg
-   :target: https://pypi.python.org/pypi/flask-ipban
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/flask-serialize.svg
+   :target: https://pypi.python.org/pypi/flask-serialize
 

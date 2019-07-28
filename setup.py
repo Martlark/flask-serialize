@@ -15,8 +15,8 @@
 from codecs import open
 from setuptools import setup
 
-VERSION = '0.0.3'
-LONG_DESCRIPTION = open('README.md', 'r', encoding='utf-8').read()
+VERSION = '0.0.4'
+LONG_DESCRIPTION = open('README.rst', 'r', encoding='utf-8').read()
 
 setup(
     name='flask-serialize',
@@ -25,7 +25,7 @@ setup(
 
     description='Easy to use JSON serialization and update/create for Flask and SQLAlchemey.',
     long_description=LONG_DESCRIPTION,
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/x-rst',
 
     url='https://github.com/Martlark/flask-serialize',
     download_url='https://github.com/Martlark/flask-serialize/archive/{version}.tar.gz'.format(version=VERSION),
