@@ -175,9 +175,6 @@ def test_get_all(client):
 
 
 def test_relationships(client):
-    rv = client.get('/setting_get_all')
-    assert rv.status_code == 200
-    assert len(json.loads(rv.data)) == 0
     key = random_key()
     # test add
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
