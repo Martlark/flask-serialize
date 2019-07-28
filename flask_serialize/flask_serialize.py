@@ -52,11 +52,21 @@ class FlaskSerializeMixin:
         return item
 
     @classmethod
+    def json_filter_by(cls, **kwargs):
+        """
+        return a list in json format using the filter_by arguments
+        :param kwargs: SQLAlchemy query.filter_by arguments
+        :return: flask response with json list of results
+        """
+        results = cls.query.filter_by(**kwargs)
+        return cls.json_list(results)
+
+    @classmethod
     def json_list(cls, query_result):
         """
         return a list in json format from the query_result
         :param query_result: sql alchemy query result
-        :return: json list of results
+        :return: flask response with json list of results
         """
         return jsonify([item.__as_exclude_json_dict() for item in query_result])
 
@@ -73,7 +83,7 @@ class FlaskSerializeMixin:
     def as_json(self):
         """
         the sql object as a json object without the excluded fields
-        :return: json object
+        :return: flask response json object
         """
         return jsonify(self.__as_exclude_json_dict())
 

@@ -275,7 +275,15 @@ Mixin Helper methods and properties
         """
         return a list in json format from the query_result
         :param query_result: sql alchemy query result
-        :return: json list of results
+        :return: flask response with json list of results
+        """
+
+    @classmethod
+    def json_filter_by(cls, **kwargs):
+        """
+        return a list in json format using the filter_by arguments
+        :param kwargs: SQLAlchemy query.filter_by arguments
+        :return: flask response with json list of results
         """
 
 Example:

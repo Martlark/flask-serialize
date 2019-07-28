@@ -10,7 +10,7 @@
 
 . venv37/bin/activate
 
-# first
+# setup first
 
 pip install setuptools
 pip install wheel
@@ -23,11 +23,5 @@ pip install pytest-flask
 # on each release
 
 python setup.py sdist bdist_wheel
-#
-twine check dist/flask_serialize-0.0.6*
-# test
-# pip install -e .
-# twine upload --repository-url https://test.pypi.org/legacy/ dist/* -u martlark
-# prod pypi
-# add release in git hub to match the version
-twine upload dist/flask_serialize-0.0.6* -u martlark
+twine check dist/flask_serialize-0.0.7*
+twine upload dist/flask_serialize-0.0.7* -u martlark

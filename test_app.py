@@ -159,7 +159,7 @@ def test_get_all(client):
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
     assert len(json.loads(rv.data)) == 0
-    key = 'test-key'
+    key = random_key()
     # test add
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
     rv = client.get('/setting_get_all')
@@ -167,13 +167,18 @@ def test_get_all(client):
     json_settings = json.loads(rv.data)
     assert len(json_settings) == 1
     assert json_settings[0]['key'] == key
+    with app.app_context():
+        rv = Setting.json_filter_by(key=key)
+        json_settings = json.loads(rv.data)
+        assert len(json_settings) == 1
+        assert json_settings[0]['key'] == key
 
 
 def test_relationships(client):
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
     assert len(json.loads(rv.data)) == 0
-    key = 'test-key'
+    key = random_key()
     # test add
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
     # add relation
@@ -192,11 +197,11 @@ def test_relationships(client):
 
 def test_can_delete(client):
     # create
-    key = 'test-key'
+    key = random_key()
     value = '1234'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
-    item = Setting.query.filter_by(key='test-key').first()
+    item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
@@ -261,7 +266,7 @@ def test_update_create_type_conversion(client):
 
 def test_excluded(client):
     # create
-    key = random_key().upper()
+    key = random_key()
     value = '1234'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
@@ -284,6 +289,7 @@ def test_create_update_delete(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == 'test-value'
+    old_updated = item.updated
 
     item.update_from_dict(dict(value='new-value'))
     assert item.value == 'new-value'
@@ -294,6 +300,8 @@ def test_create_update_delete(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == 'yet-another-value'
+    # check updated is changing
+    assert old_updated != item.updated
     # set to ''
     rv = client.post('/setting_edit/{}'.format(item.id),
                      data=dict(value=''))
