@@ -1,9 +1,10 @@
 flask-serialize
 ===============
-Read / Write JSON serialization of models for Flask applications using SQLAlchemy
----------------------------------------------------------------------------------
 
 |PyPI Version|
+
+Read / Write JSON serialization of models for Flask applications using SQLAlchemy
+---------------------------------------------------------------------------------
 
 Add as a Mixin (FlaskSerializeMixin).  This adds the properties and methods for serialization.
 
@@ -59,7 +60,7 @@ Get a single item as json.
 
 .. code:: python
 
-    @app.route('/get_setting/<item_id>', METHODS=['GET'])
+    @app.route('/get_setting/<item_id>', methods=['GET'])
     def get_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
@@ -67,7 +68,7 @@ Delete a single item.
 
 .. code:: python
 
-    @app.route('/delete_setting/<item_id>', METHODS=['DELETE'])
+    @app.route('/delete_setting/<item_id>', methods=['DELETE'])
     def delete_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
@@ -75,13 +76,22 @@ Get all items as a json list.
 
 .. code:: python
 
-    @app.route('/get_setting_all', METHODS=['GET'])
+    @app.route('/get_setting_all', methods=['GET'])
     def get_setting_all():
         return Setting.get_delete_put()
 
+All of get all, get, put, and delete can be combined in one route.
+
+.. code:: python
+
+    @app.route('/setting/<int:item_id>', methods=['GET', 'PUT', 'DELETE'])
+    @app.route('/setting', methods=['GET'])
+    def route_setting_all(item_id=None):
+        return Setting.get_delete_put(item_id)
+
 Updating from a json object in the flask put request
     
-JQuery:
+JQuery example:
 
 .. code:: javascript
 
