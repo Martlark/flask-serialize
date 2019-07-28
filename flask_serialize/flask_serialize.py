@@ -165,7 +165,7 @@ class FlaskSerializeMixin:
         update/create the item using form data from the request object
         only present fields are updated
         throws error if validation fails
-        :return: nothing
+        :return: True when complete
         """
         for field in self.update_fields:
             if field in request.form:
@@ -176,6 +176,7 @@ class FlaskSerializeMixin:
         self.update_timestamp()
         self.db.session.add(self)
         self.db.session.commit()
+        return True
 
     @classmethod
     def request_create_form(cls):

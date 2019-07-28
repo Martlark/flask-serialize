@@ -4,9 +4,14 @@ Read / Write JSON serialization of models for Flask applications using SQLAlchem
 
 Add as a Mixin (FlaskSerializeMixin).  This adds the properties and methods for serialization.
 
-Simple usage:
--------------
+# Example:
 
+
+Model setup:
+--
+
+    # example database model
+    
     from app import db
 
     FlaskSerializeMixin.db = db
@@ -26,8 +31,8 @@ Simple usage:
 
         # checks if Flask-Serialize can delete
         def can_delete(self):
-            if len(self.value) == 1234:
-                raise Exception('Deletion not allowed.  Magic value length!')
+            if self.value == '1234':
+                raise Exception('Deletion not allowed.  Magic value!')
     
         # checks if Flask-Serialize can create/update
         def verify(self, create=False):
@@ -40,7 +45,7 @@ Simple usage:
         def __repr__(self):
             return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
 
-In your routes:
+Routes setup:
 ---------------
 
 Get a single item as json.
@@ -128,7 +133,7 @@ List of model field names to not serialize when return as json.
     
     exclude_json_serialize_fields = []
 
-fields to be updated
+Updating fields specification
 --
 
 List of model fields to be read from a form or json when updating an object.  Normally
@@ -137,14 +142,14 @@ admin fields such as login_counts or security fields are excluded.
 
     update_fields = []
 
-fields used when creating
+Creation fields used when creating specification
 --
 
 List of model fields to be read from a form when creating an object.
 
     create_fields = []
 
-fields used to set the update date/time
+Update date/time fields specification
 --
 
 List of fields on the model to be set when updating/creating 
@@ -154,14 +159,14 @@ Default is:
 
     timestamp_fields = ['updated', 'timestamp']
 
-list of property names that are relationships to be included in serialization
+Relationships list of property names that are to be included in serialization
 --
     relationship_fields = []
 
 In default operation relationships in models are not serialized.  Add any
 relationship property name here to be included in serialization.
 
-add your own serialization converters here
+Serialization converters
 --
 
 column_type_converters = {}
@@ -175,7 +180,7 @@ To convert VARCHAR2 to a string:
 
     column_type_converters['VARCHAR2'] = lambda v: str(v)
 
-add or replace update/create conversion types (to database)
+Conversion types (to database) add or replace update/create
 --
 A list of dicts that specify conversions.
 
@@ -217,7 +222,6 @@ Mixin Helper methods and properties
         :param query_result: sql alchemy query result
         :return: json list of results
         """
-        return jsonify([item.__as_exclude_json_dict() for item in query_result])
 
 Example:
 

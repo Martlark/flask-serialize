@@ -2,3 +2,5 @@ flask
 SQLAlchemy
 EasyDict
 pytest
+flask-sqlalchemy
+flask-wtf

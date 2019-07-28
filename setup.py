@@ -25,7 +25,7 @@ setup(
 
     description='Easy to use JSON serialization and update/create for Flask and SQLAlchemey.',
     long_description=LONG_DESCRIPTION,
-    long_description_content_type='text/x-rst',
+    long_description_content_type='text/markdown',
 
     url='https://github.com/Martlark/flask-serialize',
     download_url='https://github.com/Martlark/flask-serialize/archive/{version}.tar.gz'.format(version=VERSION),
