@@ -168,6 +168,14 @@ relationship property name here to be included in serialization.
 
 Serialization converters
 --
+There are three built in converters to convert data from the database
+to a good format for serialization:
+
+* DATETIME - Removes the fractional second part and makes it a string
+* PROPERTY - Enumerates and returns model added properties
+* RELATIONSHIP - Deals with children model items.
+
+Set one of these to None or a value to remove or replace it's behaviour.
 
 column_type_converters = {}
 
@@ -176,9 +184,9 @@ and the value is a method to provide the conversion.
 
 Example:
 
-To convert VARCHAR2 to a string:
+To convert VARCHAR(100) to a string:
 
-    column_type_converters['VARCHAR2'] = lambda v: str(v)
+    column_type_converters['VARCHAR(100)'] = lambda v: str(v)
 
 Conversion types (to database) add or replace update/create
 --

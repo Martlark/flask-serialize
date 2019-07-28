@@ -109,7 +109,7 @@ class Setting(FlaskSerializeMixin, db.Model):
 
     setting_type = db.Column(db.String(120), index=True, default='misc')
     key = db.Column(db.String(120), index=True)
-    value = db.Column(db.String(30000), default='')
+    value = db.Column(db.String(3000), default='')
     number = db.Column(db.Integer, default=0)
     active = db.Column(db.String(1), default='y')
     created = db.Column(db.DateTime, default=datetime.utcnow)
@@ -206,6 +206,29 @@ def test_can_delete(client):
     assert json_result['error'] == 'Deletion not allowed.  Magic value!'
 
 
+def test_column_conversion(client):
+    # create
+    key = random_key()
+    value = '12.34'
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+    assert rv.status_code == 302
+    # get
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.as_dict['value'] == '12.34'
+    item.column_type_converters = {'VARCHAR(3000)': lambda v: ','.join(str(v).split('.'))}
+    assert item.as_dict['value'] == '12,34'
+    # remove custom converter
+    item.column_type_converters = {'VARCHAR(3000)': None}
+    assert item.as_dict['value'] == '12.34'
+    # remove built in converter
+    converted_date = item.as_dict['updated']
+    item.column_type_converters = {'DATETIME': None}
+    un_converted_date = item.as_dict['updated']
+    assert converted_date != un_converted_date
+    assert type(un_converted_date) == datetime
+
+
 def test_update_create_type_conversion(client):
     # create
     key = random_key()
@@ -227,7 +250,7 @@ def test_update_create_type_conversion(client):
     assert item.active == 'y'
     # add conversion type
     old_convert_type = Setting.convert_types
-    Setting.convert_types = [{'type': int, 'method': lambda n: n*2}]
+    Setting.convert_types = [{'type': int, 'method': lambda n: n * 2}]
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(number=100))
     Setting.convert_types = old_convert_type
     assert rv.status_code == 200
