@@ -62,7 +62,7 @@ Get a single item as json.
 
     @app.route('/get_setting/<item_id>', methods=['GET'])
     def get_setting( item_id ):
-        return Setting.get_delete_put(item_id)
+        return Setting.get_delete_put_post(item_id)
 
     Returns a Flask response with a json object, example:
 
@@ -76,7 +76,7 @@ Put an update to a single item as json.
 
     @app.route('/update_setting/<item_id>', methods=['PUT'])
     def update_setting( item_id ):
-        return Setting.get_delete_put(item_id)
+        return Setting.get_delete_put_post(item_id)
 
     Returns a Flask response with the result as a json object:
 
@@ -91,7 +91,7 @@ Delete a single item.
 
     @app.route('/delete_setting/<item_id>', methods=['DELETE'])
     def delete_setting( item_id ):
-        return Setting.get_delete_put(item_id)
+        return Setting.get_delete_put_post(item_id)
 
     Returns a Flask response with the result as a json object:
 
@@ -105,7 +105,7 @@ Get all items as a json list.
 
     @app.route('/get_setting_all', methods=['GET'])
     def get_setting_all():
-        return Setting.get_delete_put()
+        return Setting.get_delete_put_post()
 
     Returns a Flask response with a list of json objects, example:
 
@@ -120,7 +120,7 @@ All of get all, get, put, and delete can be combined in one route.
     @app.route('/setting/<int:item_id>', methods=['GET', 'PUT', 'DELETE'])
     @app.route('/setting', methods=['GET'])
     def route_setting_all(item_id=None):
-        return Setting.get_delete_put(item_id)
+        return Setting.get_delete_put_post(item_id)
 
 Updating from a json object in the flask put request
     
@@ -150,7 +150,7 @@ Flask route:
 
     @app.route('/update_setting/<int:item_id>', methods=['PUT'])
     def update_setting(item_id):
-        return Setting.get_delete_put(item_id)
+        return Setting.get_delete_put_post(item_id)
 
 Create or update from a WTF form:
 
@@ -295,15 +295,21 @@ Default is:
 Mixin Helper methods and properties
 ===================================
 
-Put, get, delete, post and get all in one method.
+``get_delete_put_post()``
 
-* get - returns one item when `item_id` is a primary key
-* get - returns all items when `item_id` is None
-* put - updates item using `item_id` as the id from request json data
-* delete - removes the item with primary key of `item_id` if self.can_delete does not throw an error
-* post - creates and returns a Flask response with a new item as json from form data when `item_id` is None
-* post - updates an item from form data using `item_id`. Returns Flask response of {'message':'something', 'error':'any error message'}
+Put, get, delete, post and get-all magic method handler.
+NOTE: renamed from ``get_delete_put()``.
 
+====== ==============================================================================================================================
+Method Operation
+====== ==============================================================================================================================
+GET    returns one item when `item_id` is a primary key
+GET    returns all items when `item_id` is None
+PUT    updates item using `item_id` as the id from request json data
+DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error
+POST   creates and returns a Flask response with a new item as json from form data when `item_id` is None
+POST   updates an item from form data using `item_id`. Returns Flask response of {'message':'something', 'error':'any error message'}
+====== ==============================================================================================================================
 
 Set the `user` parameter to restrict a certain user.  Assumes that a model
 relationship of user exists.
@@ -311,13 +317,16 @@ relationship of user exists.
 .. code:: python
 
     @property
-    def get_delete_put(self, item_id=None, user=None):
+    def get_delete_put_post(self, item_id=None, user=None):
         """
         get, delete or update with JSON a single model item
+        post for form data
         :param item_id: the primary key id of the item - if none and method is get returns all items
         :param user: user to add as query item.
         :return: json object: {error, message}, or the item.  error == None for correct operation
         """
+
+``as_dict``
 
 .. code:: python
 
@@ -327,7 +336,11 @@ relationship of user exists.
         the sql object as a dict without the excluded fields
         :return: dict
         """
-        
+
+``as_json``
+
+.. code:: python
+
     @property
     def as_json(self):
         """
@@ -335,12 +348,18 @@ relationship of user exists.
         :return: json object
         """
 
+``dict_list()``
+
+.. code:: python
+
     def dict_list(cls, query_result):
         """
         return a list of dictionary objects from the sql query result
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
+
+``json_list()``
 
 Return a flask response in json format from a sql alchemy query result.
 
@@ -363,6 +382,8 @@ Example:
     def address_list():
         items = Address.query.filter_by(user=current_user)
         return Address.json_list(items)
+
+``json_filter_by()``
 
 Return a flask response in json format using a filter_by query.
 

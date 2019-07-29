@@ -187,7 +187,7 @@ class FlaskSerializeMixin:
     @classmethod
     def request_create_form(cls):
         """
-        create new item from a form in the current request object
+        create a new item from a form in the current request object
         throws error if something wrong
         :return: the new created item
         """
@@ -266,7 +266,7 @@ class FlaskSerializeMixin:
         pass
 
     @classmethod
-    def get_delete_put(cls, item_id=None, user=None):
+    def get_delete_put_post(cls, item_id=None, user=None):
         """
         get, delete, post, put with JSON/FORM a single model item
         :param item_id: the key of the item - if none and method is 'GET' returns all items

@@ -28,30 +28,21 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
 db = SQLAlchemy(app)
 
-
-@app.route('/setting_post/<item_id>', methods=['POST'])
+# Get all items as a json list.
+# post and get
 @app.route('/setting_post', methods=['POST'])
-def route_setting_post(item_id=None):
-    return Setting.get_delete_put(item_id)
-
+@app.route('/setting_get_all', methods=['GET'])
+@app.route('/setting_post/<item_id>', methods=['POST'])
 @app.route('/setting_get/<item_id>', methods=['GET'])
-def route_setting_get(item_id):
-    return Setting.get_delete_put(item_id)
+def route_setting_get(item_id=None):
+    return Setting.get_delete_put_post(item_id)
 
 
 # Delete a single item.
 
 @app.route('/setting_delete/<item_id>', methods=['DELETE'])
 def route_setting_delete(item_id):
-    return Setting.get_delete_put(item_id)
-
-
-# Get all items as a json list.
-
-@app.route('/setting_get_all', methods=['GET'])
-def route_get_setting_all():
-    return Setting.get_delete_put()
-
+    return Setting.get_delete_put_post(item_id)
 
 @app.route('/setting_update/<int:item_id>', methods=['PUT'])
 def route_setting_update(item_id):
@@ -295,8 +286,8 @@ def test_excluded(client):
 
 
 def test_get_delete_put_post(client):
-    # create
     key = random_key()
+    # create using post
     rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 200
     item_json = json.loads(rv.data)
@@ -305,6 +296,7 @@ def test_get_delete_put_post(client):
     assert item_json['value'] == 'test-value'
     assert item.value == 'test-value'
     assert item.number == 0
+    # update using post
     rv = client.post('/setting_post/{}'.format(item.id), data=dict(setting_type='test', key=key, value='new-value', number=10))
     assert rv.status_code == 200
     assert json.loads(rv.data)['message'] == 'Updated'
