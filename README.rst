@@ -64,6 +64,27 @@ Get a single item as json.
     def get_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
+    Returns a Flask response with a json object, example:
+
+.. code:: JavaScript
+
+    {id:1, value: 'hello'}
+
+Put an update to a single item as json.
+
+.. code:: python
+
+    @app.route('/update_setting/<item_id>', methods=['PUT'])
+    def update_setting( item_id ):
+        return Setting.get_delete_put(item_id)
+
+    Returns a Flask response with the result as a json object:
+
+.. code:: JavaScript
+
+    {error:"any error message", message: "success message"}
+
+
 Delete a single item.
 
 .. code:: python
@@ -72,6 +93,12 @@ Delete a single item.
     def delete_setting( item_id ):
         return Setting.get_delete_put(item_id)
 
+    Returns a Flask response with the result as a json object:
+
+.. code:: JavaScript
+
+    {error:"any error message", message: "success message"}
+
 Get all items as a json list.
 
 .. code:: python
@@ -79,6 +106,12 @@ Get all items as a json list.
     @app.route('/get_setting_all', methods=['GET'])
     def get_setting_all():
         return Setting.get_delete_put()
+
+    Returns a Flask response with a list of json objects, example:
+
+.. code:: JavaScript
+
+    [{id:1, value: 'hello'},{id:2, value: 'there'},{id:1, value: 'programmer'}]
 
 All of get all, get, put, and delete can be combined in one route.
 
@@ -101,7 +134,14 @@ JQuery example:
             method: 'PUT',
             contentType: "application/json",
             data: {setting_type:'x',value:'100'},
-        }).then(() => alert('updated'));
+        }).then(response => {
+            if( response.error ){
+                alert('Error:'+response.error);
+            }
+            else {
+                alert('OK:'+response.message);
+            }
+        });
     }
 
 Flask route:  
@@ -218,7 +258,14 @@ to a good format for serialization:
 
 Set one of these to None or a value to remove or replace it's behaviour.
 
-column_type_converters = {}
+Adding and overriding converter behaviour
+-----------------------------------------
+
+Add values to the class property:
+
+.. code:: python
+
+    column_type_converters = {}
 
 Where the key is the column type name of the database column 
 and the value is a method to provide the conversion.
@@ -232,8 +279,9 @@ To convert VARCHAR(100) to a string:
     column_type_converters['VARCHAR(100)'] = lambda v: str(v)
 
 Conversion types (to database) add or replace update/create
---
-A list of dicts that specify conversions.
+-----------------------------------------------------------
+
+Add or replace to db conversion methods by using a list of dicts that specify conversions.
 
 Default is:
 
@@ -247,6 +295,30 @@ Default is:
 Mixin Helper methods and properties
 ===================================
 
+Put, get, delete, post and get all in one method.
+
+* get - returns one item when `item_id` is a primary key
+* get - returns all items when `item_id` is None
+* put - updates item using `item_id` as the id from request json data
+* delete - removes the item with primary key of `item_id` if self.can_delete does not throw an error
+* post - creates and returns a Flask response with a new item as json from form data when `item_id` is None
+* post - updates an item from form data using `item_id`. Returns Flask response of {'message':'something', 'error':'any error message'}
+
+
+Set the `user` parameter to restrict a certain user.  Assumes that a model
+relationship of user exists.
+
+.. code:: python
+
+    @property
+    def get_delete_put(self, item_id=None, user=None):
+        """
+        get, delete or update with JSON a single model item
+        :param item_id: the primary key id of the item - if none and method is get returns all items
+        :param user: user to add as query item.
+        :return: json object: {error, message}, or the item.  error == None for correct operation
+        """
+
 .. code:: python
 
     @property
@@ -259,7 +331,7 @@ Mixin Helper methods and properties
     @property
     def as_json(self):
         """
-        the sql object as a json object without the excluded fields
+        the sql object as a json object without the excluded dict and json fields
         :return: json object
         """
 
@@ -269,7 +341,11 @@ Mixin Helper methods and properties
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
-        
+
+Return a flask response in json format from a sql alchemy query result.
+
+.. code:: python
+
     @classmethod
     def json_list(cls, query_result):
         """
@@ -277,6 +353,20 @@ Mixin Helper methods and properties
         :param query_result: sql alchemy query result
         :return: flask response with json list of results
         """
+
+Example:
+
+.. code:: python
+
+    @bp.route('/address/list', methods=['GET'])
+    @login_required
+    def address_list():
+        items = Address.query.filter_by(user=current_user)
+        return Address.json_list(items)
+
+Return a flask response in json format using a filter_by query.
+
+.. code:: python
 
     @classmethod
     def json_filter_by(cls, **kwargs):
@@ -293,8 +383,7 @@ Example:
     @bp.route('/address/list', methods=['GET'])
     @login_required
     def address_list():
-        items = Address.query.filter_by(user=current_user)
-        return Address.json_list(items)
+        return Address.filter_by(user=current_user)
 
 Licensing
 ---------

@@ -177,11 +177,7 @@ class FlaskSerializeMixin:
         throws error if validation fails
         :return: True when complete
         """
-        for field in self.update_fields:
-            if field in request.form:
-                value = request.form.get(field)
-                setattr(self, field, self.__convert_value(value))
-
+        self.update_from_dict(request.form)
         self.verify()
         self.update_timestamp()
         self.db.session.add(self)
@@ -197,6 +193,9 @@ class FlaskSerializeMixin:
         """
         new_item = cls()
         # field_list = cls.__table__.columns
+
+        if len(new_item.create_fields or '') == 0:
+            raise Exception('create_fields is empty')
 
         for field in cls.create_fields:
             value = request.form.get(field)
@@ -216,16 +215,14 @@ class FlaskSerializeMixin:
         Throws exception if not valid
         :return: True if item updated
         """
+
         try:
             json_data = request.get_json(force=True)
         except Exception as e:
             current_app.logger.exception(e)
             json_data = request.values
 
-        for f in self.update_fields:
-            if f in json_data:
-                value = json_data[f]
-                setattr(self, f, self.__convert_value(value))
+        self.update_from_dict(json_data)
 
         self.verify()
         self.update_timestamp()
@@ -243,13 +240,16 @@ class FlaskSerializeMixin:
 
     def update_from_dict(self, data_dict):
         """
-        uses a dict to update fields
+        uses a dict to update fields of the model instance
         :param data_dict:
         :return:
         """
+        if len(self.update_fields or '') == 0:
+            raise Exception('update_fields is empty')
+
         for field in self.update_fields:
             if field in data_dict:
-                setattr(self, field, data_dict[field])
+                setattr(self, field, self.__convert_value(data_dict[field]))
 
     def can_delete(self):
         """
@@ -268,9 +268,9 @@ class FlaskSerializeMixin:
     @classmethod
     def get_delete_put(cls, item_id=None, user=None):
         """
-        get, delete or update with JSON a single model item
-        :param item_id: the key of the item - if none and method is get returns all items
-        :param user: user to add as query item.
+        get, delete, post, put with JSON/FORM a single model item
+        :param item_id: the key of the item - if none and method is 'GET' returns all items
+        :param user: user to user as query filter.
         :return: json object: {error, message}, or the item.  error == None for correct operation
         """
         item = None
@@ -286,11 +286,22 @@ class FlaskSerializeMixin:
                 return cls.json_list(cls.query.all())
 
         if not item:
+            if request.method == 'POST':
+                return cls.request_create_form().as_json
+
             abort(404)
 
         # get a single item
         if request.method == 'GET':
             return item.as_json
+
+        # update single item
+        elif request.method == 'POST':
+            try:
+                item.request_update_form()
+            except Exception as e:
+                return jsonify({'error': str(e)})
+            return jsonify({'message': 'Updated'})
 
         # delete a single item
         elif request.method == 'DELETE':

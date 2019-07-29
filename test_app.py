@@ -5,10 +5,10 @@ import string
 import pytest
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from flask import Flask, redirect, url_for, render_template_string, abort
+from flask import Flask, redirect, url_for, render_template_string, abort, Response
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
-from wtforms import StringField
+from wtforms import StringField, IntegerField
 
 
 def random_key():
@@ -19,6 +19,7 @@ class EditForm(FlaskForm):
     setting_type = StringField('setting_type')
     key = StringField('key')
     value = StringField('value')
+    number = IntegerField('number')
 
 
 app = Flask("test_app")
@@ -27,6 +28,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
 db = SQLAlchemy(app)
 
+
+@app.route('/setting_post/<item_id>', methods=['POST'])
+@app.route('/setting_post', methods=['POST'])
+def route_setting_post(item_id=None):
+    return Setting.get_delete_put(item_id)
 
 @app.route('/setting_get/<item_id>', methods=['GET'])
 def route_setting_get(item_id):
@@ -49,8 +55,16 @@ def route_get_setting_all():
 
 @app.route('/setting_update/<int:item_id>', methods=['PUT'])
 def route_setting_update(item_id):
+    """
+    update from a json object
+    :param item_id: item to update
+    :return:
+    """
     item = Setting.query.get_or_404(item_id)
-    item.request_update_json()
+    try:
+        item.request_update_json()
+    except Exception as e:
+        return Response('Error updating item: ' + str(e), 500)
     return 'Updated'
 
 
@@ -67,15 +81,15 @@ def route_setting_edit_add(item_id=None):
         if item_id:
             try:
                 item.request_update_form()
-            except:
-                abort(500)
+            except Exception as e:
+                return Response('Error updating item: ' + str(e), 500)
             return redirect(url_for('route_setting_edit_add', item_id=item_id))
         else:
             try:
                 new_item = Setting.request_create_form()
                 return redirect(url_for('route_setting_edit_add', item_id=new_item.id))
             except Exception as e:
-                print('Error creating item: ' + str(e))
+                return Response('Error creating item: ' + str(e), 500)
 
     for err in form.errors:
         print('**form error**', str(err), form.errors[err])
@@ -86,6 +100,7 @@ def route_setting_edit_add(item_id=None):
         <input name="key" value="{{item.key}}">
         <input name="setting_type" value="{{item.setting_type}}">
         <input name="value" value="{{item.value}}">
+        <input name="number" value="{{item.number}}">
         </form>
         ''',
         item=item,
@@ -118,7 +133,8 @@ class Setting(FlaskSerializeMixin, db.Model):
     sub_settings = db.relationship('SubSetting', backref='setting')
 
     # serializer fields
-    create_fields = update_fields = ['setting_type', 'value', 'key', 'active', 'number']
+    update_fields = ['setting_type', 'value', 'key', 'active', 'number']
+    create_fields = ['setting_type', 'value', 'key', 'active']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
@@ -278,25 +294,48 @@ def test_excluded(client):
     assert 'updated' in item.as_dict
 
 
+def test_get_delete_put_post(client):
+    # create
+    key = random_key()
+    rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value='test-value', number=10))
+    assert rv.status_code == 200
+    item_json = json.loads(rv.data)
+    item = Setting.query.get_or_404(item_json['id'])
+    assert item
+    assert item_json['value'] == 'test-value'
+    assert item.value == 'test-value'
+    assert item.number == 0
+    rv = client.post('/setting_post/{}'.format(item.id), data=dict(setting_type='test', key=key, value='new-value', number=10))
+    assert rv.status_code == 200
+    assert json.loads(rv.data)['message'] == 'Updated'
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == 'new-value'
+    assert item.number == 10
+
+
 def test_create_update_delete(client):
     # create
     key = random_key()
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == 'test-value'
+    # test that number is not set on creation as it is not included in create_fields
+    assert item.number == 0
     old_updated = item.updated
 
     item.update_from_dict(dict(value='new-value'))
     assert item.value == 'new-value'
     # set to new value
     rv = client.post('/setting_edit/{}'.format(item.id),
-                     data=dict(value='yet-another-value'))
+                     data=dict(value='yet-another-value', number=100))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == 'yet-another-value'
+    assert item.number == 100
     # check updated is changing
     assert old_updated != item.updated
     # set to ''
@@ -310,8 +349,40 @@ def test_create_update_delete(client):
     rv = client.post('/setting_edit/{}'.format(item.id),
                      data=dict(key=''))
     assert rv.status_code == 500
+    assert rv.data.decode('utf-8') == 'Error updating item: Missing key'
     # delete
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 200
     item = Setting.query.filter_by(key=key).first()
     assert not item
+
+
+def test_raise_error_for_create_fields(client):
+    key = random_key()
+    # add
+    old_create_fields = Setting.create_fields
+    # remove fields
+    Setting.create_fields = []
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    assert rv.status_code == 500
+    assert rv.data.decode('utf-8') == 'Error creating item: create_fields is empty'
+    Setting.create_fields = old_create_fields
+
+
+def test_raise_error_for_update_fields(client):
+    key = random_key()
+    # add
+    old_fields = Setting.update_fields
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    item = Setting.query.filter_by(key=key).first()
+    # remove fields
+    Setting.update_fields = []
+    # form
+    rv = client.post('/setting_edit/{}'.format(item.id), data=dict(setting_type='test', key=key, value='test-value'))
+    assert rv.status_code == 500
+    assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
+    # json
+    rv = client.put('/setting_update/{}'.format(item.id), data=dict(setting_type='test', key=key, value='test-value'))
+    assert rv.status_code == 500
+    assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
+    Setting.update_fields = old_fields
