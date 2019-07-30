@@ -68,7 +68,7 @@ Get a single item as json.
 
 .. code:: JavaScript
 
-    {id:1, value: 'hello'}
+    {id:1, value: "hello"}
 
 Put an update to a single item as json.
 
@@ -111,14 +111,14 @@ Get all items as a json list.
 
 .. code:: JavaScript
 
-    [{id:1, value: 'hello'},{id:2, value: 'there'},{id:1, value: 'programmer'}]
+    [{id:1, value: "hello"},{id:2, value: "there"},{id:1, value: "programmer"}]
 
-All of get all, get, put, and delete can be combined in one route.
+All of: get-all, get, put, post, and delete can be combined in one route.
 
 .. code:: python
 
-    @app.route('/setting/<int:item_id>', methods=['GET', 'PUT', 'DELETE'])
-    @app.route('/setting', methods=['GET'])
+    @app.route('/setting/<int:item_id>', methods=['GET', 'PUT', 'DELETE', 'POST'])
+    @app.route('/setting', methods=['GET', 'POST'])
     def route_setting_all(item_id=None):
         return Setting.get_delete_put_post(item_id)
 
@@ -133,13 +133,13 @@ JQuery example:
             url: `/update_setting/${setting_id}`,
             method: 'PUT',
             contentType: "application/json",
-            data: {setting_type:'x',value:'100'},
+            data: {setting_type:"x",value:"100"},
         }).then(response => {
             if( response.error ){
-                alert('Error:'+response.error);
+                alert("Error:"+response.error);
             }
             else {
-                alert('OK:'+response.message);
+                alert("OK:"+response.message);
             }
         });
     }
@@ -277,6 +277,29 @@ To convert VARCHAR(100) to a string:
 .. code:: python
 
     column_type_converters['VARCHAR(100)'] = lambda v: str(v)
+
+To change DATETIME conversion behaviour, either change the DATETIME column_type_converter or
+override the ``to_date_short`` method of the mixin.  Example:
+
+.. code:: python
+
+    import time
+
+    class Model(db.model, FlaskSerializeMixin):
+        # ...
+        # ...
+        def to_date_short(self, date_value):
+            """
+            convert a datetime.datetime type to
+            a unix like milliseconds since epoch
+            :param date_value: datetime.datetime {object}
+            :return: number
+            """
+            if not date_value:
+                return 0
+
+            return int(time.mktime(date_value.timetuple())) * 1000
+
 
 Conversion types (to database) add or replace update/create
 -----------------------------------------------------------

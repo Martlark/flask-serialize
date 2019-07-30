@@ -28,11 +28,10 @@ class FlaskSerializeMixin:
     # this is required to be set for updating/deletion functions
     db = None
 
-    @classmethod
-    def to_date_short(cls, d):
+    def to_date_short(self, d):
         """
         convert the given date field to a short date / time without fractional seconds
-        :param d: datetime.datetime
+        :param d: {datetime.datetime} the value to convert
         :return: {String} the short date
         """
         return str(d).split('.')[0]
@@ -120,7 +119,7 @@ class FlaskSerializeMixin:
 
         # built in converters
 
-        __converters = {'DATETIME': lambda date_value: str(date_value).split('.')[0], 'PROPERTY': property_converter,
+        __converters = {'DATETIME': self.to_date_short, 'PROPERTY': property_converter,
                         'RELATIONSHIP': relationship_converter}
 
         d = {}

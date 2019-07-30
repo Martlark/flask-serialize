@@ -1,6 +1,7 @@
 import json
 import random
 import string
+import time
 
 import pytest
 from datetime import datetime
@@ -11,9 +12,18 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField
 
 
-def random_key():
-    return ''.join(random.sample(string.ascii_letters, 20))
+def random_string(length=20):
+    """
+    return a <length> long character random string of ascii_letters
+    :param length: {int} number of characters to return
+    :return:
+    """
+    return ''.join(random.sample(string.ascii_letters, length))
 
+
+# =========================
+# TINY TEST FLASK APP
+# =========================
 
 class EditForm(FlaskForm):
     setting_type = StringField('setting_type')
@@ -28,14 +38,27 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
 db = SQLAlchemy(app)
 
+
 # Get all items as a json list.
 # post and get
 @app.route('/setting_post', methods=['POST'])
 @app.route('/setting_get_all', methods=['GET'])
 @app.route('/setting_post/<item_id>', methods=['POST'])
 @app.route('/setting_get/<item_id>', methods=['GET'])
-def route_setting_get(item_id=None):
-    return Setting.get_delete_put_post(item_id)
+@app.route('/setting_user/<user>', methods=['GET'])
+@app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
+def route_setting_get(item_id=None, user=None):
+    return Setting.get_delete_put_post(item_id, user)
+
+
+@app.route('/setting_get_key/<key>', methods=['GET'])
+def route_setting_get_key(key):
+    """
+    get the first item that matches by a setting key
+    :param key:
+    :return:
+    """
+    return Setting.query.filter_by(key=key).first().as_json
 
 
 # Delete a single item.
@@ -43,6 +66,7 @@ def route_setting_get(item_id=None):
 @app.route('/setting_delete/<item_id>', methods=['DELETE'])
 def route_setting_delete(item_id):
     return Setting.get_delete_put_post(item_id)
+
 
 @app.route('/setting_update/<int:item_id>', methods=['PUT'])
 def route_setting_update(item_id):
@@ -100,14 +124,30 @@ def route_setting_edit_add(item_id=None):
     )
 
 
+# =========================
+# MODELS
+# =========================
+
 FlaskSerializeMixin.db = db
 
 
 class SubSetting(FlaskSerializeMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    created = db.Column(db.DateTime, default=datetime.utcnow)
 
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
     flong = db.Column(db.String(120), index=True, default='flang')
+
+    def to_date_short(self, date_value):
+        """
+        override DATETIME conversion behaviour to return unix time
+        :param date_value:
+        :return:
+        """
+        if not date_value:
+            return 0
+
+        return int(time.mktime(date_value.timetuple())) * 1000
 
 
 class Setting(FlaskSerializeMixin, db.Model):
@@ -120,12 +160,13 @@ class Setting(FlaskSerializeMixin, db.Model):
     active = db.Column(db.String(1), default='y')
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.Column(db.String(10), default='Andrew')
     # relationships
     sub_settings = db.relationship('SubSetting', backref='setting')
 
     # serializer fields
     update_fields = ['setting_type', 'value', 'key', 'active', 'number']
-    create_fields = ['setting_type', 'value', 'key', 'active']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
@@ -143,8 +184,17 @@ class Setting(FlaskSerializeMixin, db.Model):
         if not self.setting_type or len(self.setting_type) < 1:
             raise Exception('Missing setting type')
 
+    @property
+    def prop_test(self):
+        return 'prop:' + self.value
+
     def __repr__(self):
         return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
+
+
+# =========================
+# TESTS
+# =========================
 
 
 @pytest.fixture
@@ -162,13 +212,21 @@ def client():
     db.drop_all()
 
 
+def add_setting(client, key=random_string(), value='test-value'):
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    return item
+
+
 def test_get_all(client):
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
     assert len(json.loads(rv.data)) == 0
-    key = random_key()
+    key = random_string()
     # test add
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    item = add_setting(client, key=key)
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
     json_settings = json.loads(rv.data)
@@ -177,12 +235,41 @@ def test_get_all(client):
     with app.app_context():
         rv = Setting.json_filter_by(key=key)
         json_settings = json.loads(rv.data)
-        assert len(json_settings) == 1
         assert json_settings[0]['key'] == key
 
 
+def test_get_user(client):
+    key = random_string()
+    # test add 2 settings
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
+    test_user_name = random_string()
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value', user=test_user_name))
+    rv = client.get('/setting_user/{}'.format(test_user_name))
+    json_settings = json.loads(rv.data)
+    assert len(json_settings) == 1
+    item = json_settings[0]
+    assert item['user'] == test_user_name
+    rv = client.get('/setting_id_user/{}/{}'.format(item['id'], test_user_name))
+    item = json.loads(rv.data)
+    assert item['user'] == test_user_name
+    rv = client.get('/setting_user/{}'.format('no-one'))
+    json_settings = json.loads(rv.data)
+    assert len(json_settings) == 0
+
+
+def test_get_property(client):
+    key = random_string()
+    test_value = random_string()
+    # test add a thing
+    add_setting(client, key=key, value=test_value)
+    rv = client.get('/setting_get_key/{}'.format(key))
+    assert rv.status_code == 200
+    json_settings = json.loads(rv.data)
+    assert json_settings['prop_test'] == 'prop:' + test_value
+
+
 def test_relationships(client):
-    key = random_key()
+    key = random_string()
     # test add
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
     # add relation
@@ -201,7 +288,7 @@ def test_relationships(client):
 
 def test_can_delete(client):
     # create
-    key = random_key()
+    key = random_string()
     value = '1234'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
@@ -217,7 +304,7 @@ def test_can_delete(client):
 
 def test_column_conversion(client):
     # create
-    key = random_key()
+    key = random_string()
     value = '12.34'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
@@ -230,7 +317,7 @@ def test_column_conversion(client):
     # remove custom converter
     item.column_type_converters = {'VARCHAR(3000)': None}
     assert item.as_dict['value'] == '12.34'
-    # remove built in converter
+    # remove built in DATETIME converter
     converted_date = item.as_dict['updated']
     item.column_type_converters = {'DATETIME': None}
     un_converted_date = item.as_dict['updated']
@@ -240,7 +327,7 @@ def test_column_conversion(client):
 
 def test_update_create_type_conversion(client):
     # create
-    key = random_key()
+    key = random_string()
     value = '1234'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
@@ -270,7 +357,7 @@ def test_update_create_type_conversion(client):
 
 def test_excluded(client):
     # create
-    key = random_key()
+    key = random_string()
     value = '1234'
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
@@ -286,7 +373,7 @@ def test_excluded(client):
 
 
 def test_get_delete_put_post(client):
-    key = random_key()
+    key = random_string()
     # create using post
     rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 200
@@ -297,7 +384,8 @@ def test_get_delete_put_post(client):
     assert item.value == 'test-value'
     assert item.number == 0
     # update using post
-    rv = client.post('/setting_post/{}'.format(item.id), data=dict(setting_type='test', key=key, value='new-value', number=10))
+    rv = client.post('/setting_post/{}'.format(item.id),
+                     data=dict(setting_type='test', key=key, value='new-value', number=10))
     assert rv.status_code == 200
     assert json.loads(rv.data)['message'] == 'Updated'
     item = Setting.query.filter_by(key=key).first()
@@ -308,7 +396,7 @@ def test_get_delete_put_post(client):
 
 def test_create_update_delete(client):
     # create
-    key = random_key()
+    key = random_string()
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
@@ -350,7 +438,7 @@ def test_create_update_delete(client):
 
 
 def test_raise_error_for_create_fields(client):
-    key = random_key()
+    key = random_string()
     # add
     old_create_fields = Setting.create_fields
     # remove fields
@@ -362,7 +450,7 @@ def test_raise_error_for_create_fields(client):
 
 
 def test_raise_error_for_update_fields(client):
-    key = random_key()
+    key = random_string()
     # add
     old_fields = Setting.update_fields
     client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
@@ -378,3 +466,18 @@ def test_raise_error_for_update_fields(client):
     assert rv.status_code == 500
     assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
     Setting.update_fields = old_fields
+
+
+def test_override_datetime_conversion(client):
+    key = random_string()
+    test_value = random_string()
+    # test add a thing
+    item = add_setting(client, key=key, value=test_value)
+    sub_setting = SubSetting(setting=item, flong=random_string(5))
+    db.session.add(sub_setting)
+    db.session.commit()
+    item = Setting.query.filter_by(key=key).first()
+    sub = item.sub_settings[0]
+    unix_time = int(time.mktime(sub.created.timetuple())) * 1000
+    assert type(sub.as_dict['created']) == int
+    assert sub.as_dict['created'] == unix_time
