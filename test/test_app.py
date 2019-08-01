@@ -5,11 +5,8 @@ import time
 
 import pytest
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from flask import Flask, redirect, url_for, render_template_string, abort, Response
-from flask_serialize.flask_serialize import FlaskSerializeMixin
-from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField
+
+from test.test_flask_app import app, db, Setting, SubSetting
 
 
 def random_string(length=20):
@@ -19,177 +16,6 @@ def random_string(length=20):
     :return:
     """
     return ''.join(random.sample(string.ascii_letters, length))
-
-
-# =========================
-# TINY TEST FLASK APP
-# =========================
-
-class EditForm(FlaskForm):
-    setting_type = StringField('setting_type')
-    key = StringField('key')
-    value = StringField('value')
-    number = IntegerField('number')
-
-
-app = Flask("test_app")
-app.testing = True
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
-db = SQLAlchemy(app)
-
-
-# Get all items as a json list.
-# post and get
-@app.route('/setting_post', methods=['POST'])
-@app.route('/setting_get_all', methods=['GET'])
-@app.route('/setting_post/<item_id>', methods=['POST'])
-@app.route('/setting_get/<item_id>', methods=['GET'])
-@app.route('/setting_user/<user>', methods=['GET'])
-@app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
-def route_setting_get(item_id=None, user=None):
-    return Setting.get_delete_put_post(item_id, user)
-
-
-@app.route('/setting_get_key/<key>', methods=['GET'])
-def route_setting_get_key(key):
-    """
-    get the first item that matches by a setting key
-    :param key:
-    :return:
-    """
-    return Setting.query.filter_by(key=key).first().as_json
-
-
-# Delete a single item.
-
-@app.route('/setting_delete/<item_id>', methods=['DELETE'])
-def route_setting_delete(item_id):
-    return Setting.get_delete_put_post(item_id)
-
-
-@app.route('/setting_update/<int:item_id>', methods=['PUT'])
-def route_setting_update(item_id):
-    """
-    update from a json object
-    :param item_id: item to update
-    :return:
-    """
-    item = Setting.query.get_or_404(item_id)
-    try:
-        item.request_update_json()
-    except Exception as e:
-        return Response('Error updating item: ' + str(e), 500)
-    return 'Updated'
-
-
-@app.route('/setting_edit/<int:item_id>', methods=['POST'])
-@app.route('/setting_add', methods=['POST'])
-def route_setting_edit_add(item_id=None):
-    if item_id:
-        item = Setting.query.get_or_404(item_id)
-    else:
-        item = {}
-    form = EditForm(obj=item)
-
-    if form.validate_on_submit():
-        if item_id:
-            try:
-                item.request_update_form()
-            except Exception as e:
-                return Response('Error updating item: ' + str(e), 500)
-            return redirect(url_for('route_setting_edit_add', item_id=item_id))
-        else:
-            try:
-                new_item = Setting.request_create_form()
-                return redirect(url_for('route_setting_edit_add', item_id=new_item.id))
-            except Exception as e:
-                return Response('Error creating item: ' + str(e), 500)
-
-    for err in form.errors:
-        print('**form error**', str(err), form.errors[err])
-
-    return render_template_string(
-        '''
-        <form submit="{{url_for('route_setting_edit_add')}}">
-        <input name="key" value="{{item.key}}">
-        <input name="setting_type" value="{{item.setting_type}}">
-        <input name="value" value="{{item.value}}">
-        <input name="number" value="{{item.number}}">
-        </form>
-        ''',
-        item=item,
-        title='Edit or Create item',
-        form=form
-    )
-
-
-# =========================
-# MODELS
-# =========================
-
-FlaskSerializeMixin.db = db
-
-
-class SubSetting(FlaskSerializeMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    created = db.Column(db.DateTime, default=datetime.utcnow)
-
-    setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
-    flong = db.Column(db.String(120), index=True, default='flang')
-
-    def to_date_short(self, date_value):
-        """
-        override DATETIME conversion behaviour to return unix time
-        :param date_value:
-        :return:
-        """
-        if not date_value:
-            return 0
-
-        return int(time.mktime(date_value.timetuple())) * 1000
-
-
-class Setting(FlaskSerializeMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-
-    setting_type = db.Column(db.String(120), index=True, default='misc')
-    key = db.Column(db.String(120), index=True)
-    value = db.Column(db.String(3000), default='')
-    number = db.Column(db.Integer, default=0)
-    active = db.Column(db.String(1), default='y')
-    created = db.Column(db.DateTime, default=datetime.utcnow)
-    updated = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.Column(db.String(10), default='Andrew')
-    # relationships
-    sub_settings = db.relationship('SubSetting', backref='setting')
-
-    # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user']
-    exclude_serialize_fields = ['created']
-    exclude_json_serialize_fields = ['updated']
-    relationship_fields = ['sub_settings']
-
-    # checks if Flask-Serialize can delete
-    def can_delete(self):
-        if self.value == '1234':
-            raise Exception('Deletion not allowed.  Magic value!')
-
-    # checks if Flask-Serialize can create/update
-    def verify(self, create=False):
-        if not self.key or len(self.key) < 1:
-            raise Exception('Missing key')
-
-        if not self.setting_type or len(self.setting_type) < 1:
-            raise Exception('Missing setting type')
-
-    @property
-    def prop_test(self):
-        return 'prop:' + self.value
-
-    def __repr__(self):
-        return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
 
 
 # =========================
@@ -392,6 +218,31 @@ def test_get_delete_put_post(client):
     assert item
     assert item.value == 'new-value'
     assert item.number == 10
+    # post item not found
+    rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
+                     data=dict(setting_type='test', key=key, value='new-value', number=10))
+    assert rv.status_code == 404
+    # post fail validation
+    rv = client.post('/setting_post/{}'.format(item.id), data=dict(key=''))
+    assert rv.status_code == 200
+    json_result = json.loads(rv.data)
+    assert json_result['error'] == 'Missing key'
+    # update using put
+    new_value = random_string()
+    new_number = random.randint(0, 999)
+    rv = client.put('/setting_put/{}'.format(item.id),
+                    data=dict(setting_type='test', key=key, value=new_value, number=new_number))
+    assert rv.status_code == 200
+    assert json.loads(rv.data)['message'] == 'Updated'
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == new_value
+    assert item.number == new_number
+    # put fail validation
+    rv = client.put('/setting_put/{}'.format(item.id), data=dict(key=''))
+    assert rv.status_code == 200
+    json_result = json.loads(rv.data)
+    assert json_result['error'] == 'Missing key'
 
 
 def test_create_update_delete(client):
@@ -481,3 +332,29 @@ def test_override_datetime_conversion(client):
     unix_time = int(time.mktime(sub.created.timetuple())) * 1000
     assert type(sub.as_dict['created']) == int
     assert sub.as_dict['created'] == unix_time
+
+
+def test_json_get(client):
+    key = random_string()
+    test_value = random_string()
+    setting_type = random_string()
+    # test add setting
+    item = Setting(setting_type=setting_type, key=key, value=test_value)
+    db.session.add(item)
+    db.session.commit()
+    item = Setting.query.get_or_404(item.id)
+    # get by id
+    json_item = json.loads(client.get('/setting_get_json/{}'.format(item.id)).data)
+    assert json_item['value'] == test_value
+    assert json_item['key'] == key
+    assert json_item['setting_type'] == setting_type
+    rv = client.get('/setting_get_json/{}'.format(item.id + 100))
+    assert rv.status_code == 200
+    json_item = json.loads(rv.data)
+    assert json_item == {}
+    # get first
+    json_first_item = json.loads(client.get('/setting_json_first/{}'.format(item.key)).data)
+    assert json_first_item['value'] == test_value
+    assert json_first_item['key'] == key
+    assert json_first_item['setting_type'] == setting_type
+    assert json.loads(client.get('/setting_json_first/{}'.format(random_string())).data) == {}

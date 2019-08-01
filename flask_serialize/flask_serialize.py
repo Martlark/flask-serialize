@@ -61,6 +61,18 @@ class FlaskSerializeMixin:
         return cls.json_list(results)
 
     @classmethod
+    def json_get(cls, item_id):
+        """
+        return an item in json format using the item_id as a primary key
+        :param item_id: {primary key} the primary key of the item to get
+        :return: flask response with json item, or {} if not found
+        """
+        item = cls.query.get(item_id)
+        if not item:
+            return jsonify({})
+        return item.as_json
+
+    @classmethod
     def json_list(cls, query_result):
         """
         return a list in json format from the query_result
@@ -73,6 +85,7 @@ class FlaskSerializeMixin:
     def dict_list(cls, query_result):
         """
         return a list of dictionary objects from the sql query result
+        without exclude_serialize_fields fields
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
@@ -89,6 +102,7 @@ class FlaskSerializeMixin:
     def __as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
+        without fields in exclude_json_serialize_fields and exclude_serialize_fields
         :return: dictionary
         """
         return {k: v for k, v in self.as_dict.items() if k not in self.exclude_json_serialize_fields}
@@ -268,7 +282,7 @@ class FlaskSerializeMixin:
     def get_delete_put_post(cls, item_id=None, user=None):
         """
         get, delete, post, put with JSON/FORM a single model item
-        :param item_id: the key of the item - if none and method is 'GET' returns all items
+        :param item_id: the primary key of the item - if none and method is 'GET' returns all items
         :param user: user to user as query filter.
         :return: json object: {error, message}, or the item.  error == None for correct operation
         """
@@ -276,9 +290,9 @@ class FlaskSerializeMixin:
         if user and item_id:
             item = cls.get_by_user_or_404(item_id, user=user)
         if item_id:
-            item = cls.query.get(item_id)
+            item = cls.query.get_or_404(item_id)
         elif request.method == 'GET':
-            # get a list of items
+            # no item id get a list of items
             if user:
                 return cls.json_list(cls.query.filter_by(user=user))
             else:
@@ -288,22 +302,20 @@ class FlaskSerializeMixin:
             if request.method == 'POST':
                 return cls.request_create_form().as_json
 
-            abort(404)
-
         # get a single item
         if request.method == 'GET':
             return item.as_json
 
-        # update single item
         elif request.method == 'POST':
+            # update single item
             try:
                 item.request_update_form()
             except Exception as e:
                 return jsonify({'error': str(e)})
             return jsonify({'message': 'Updated'})
 
-        # delete a single item
         elif request.method == 'DELETE':
+            # delete a single item
             try:
                 item.can_delete()
                 cls.db.session.delete(item)
@@ -313,10 +325,22 @@ class FlaskSerializeMixin:
 
             return jsonify(dict(error=None, message='Deleted'))
 
-        # PUT save the modified item
+        # PUT, save the modified item
         try:
             item.request_update_json()
         except Exception as e:
             return jsonify(dict(error=str(e), message=''))
 
         return jsonify(dict(error=None, message='Updated'))
+
+    @classmethod
+    def json_first(cls, **kwargs):
+        """
+        return the first result in json format using the filter_by arguments
+        :param kwargs: SQLAlchemy query.filter_by arguments
+        :return: flask response json item or {} if no results
+        """
+        item = cls.query.filter_by(**kwargs).first()
+        if not item:
+            return jsonify({})
+        return item.as_json

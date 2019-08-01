@@ -1,3 +1,4 @@
+wtforms
 flask
 SQLAlchemy
 EasyDict
