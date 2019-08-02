@@ -119,17 +119,13 @@ class FlaskSerializeMixin:
         :return {dictionary} the item as a dict
         """
 
-        def property_converter(s):
-            if isinstance(s, dict):
-                try:
-                    converted_value = json.dumps(s)
-                    return converted_value
-                except:
-                    pass
-            return s
+        def property_converter(value):
+            if isinstance(value, datetime):
+                return self.to_date_short(value)
+            return value
 
-        def relationship_converter(s):
-            return [item.as_dict for item in s]
+        def relationship_converter(relationships):
+            return [item.as_dict for item in relationships]
 
         # built in converters
 

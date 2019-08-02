@@ -88,10 +88,13 @@ def test_get_property(client):
     test_value = random_string()
     # test add a thing
     add_setting(client, key=key, value=test_value)
+    setting = Setting.query.filter_by(key=key).first()
     rv = client.get('/setting_get_key/{}'.format(key))
     assert rv.status_code == 200
     json_settings = json.loads(rv.data)
     assert json_settings['prop_test'] == 'prop:' + test_value
+    assert json_settings['prop_datetime'] == str(setting.created).split('.')[0]
+    assert json_settings['prop_test_dict'] == {'prop': test_value}
 
 
 def test_relationships(client):

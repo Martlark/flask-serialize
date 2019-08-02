@@ -187,5 +187,14 @@ class Setting(FlaskSerializeMixin, db.Model):
     def prop_test(self):
         return 'prop:' + self.value
 
+    @property
+    def prop_test_dict(self):
+        return {'prop': self.value}
+
+    @property
+    def prop_datetime(self):
+        return self.created
+
+
     def __repr__(self):
         return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
