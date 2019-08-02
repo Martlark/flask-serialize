@@ -107,6 +107,29 @@ class FlaskSerializeMixin:
         """
         return {k: v for k, v in self.as_dict.items() if k not in self.exclude_json_serialize_fields}
 
+    def property_converter(self, value):
+        """
+        convert datetime and set to a json compatible format.
+        override this method to alter default
+        :param value: value to convert
+        :return: the new value
+        """
+        if isinstance(value, datetime):
+            return self.to_date_short(value)
+        if isinstance(value, set):
+            return list(value)
+        return value
+
+    @staticmethod
+    def relationship_converter(relationships):
+        """
+        convert a child SQLalchemy result set into a python
+        dictionary list.
+        :param relationships: SQLAlchemy result set
+        :return: list of dict objects
+        """
+        return [item.as_dict for item in relationships]
+
     @property
     def as_dict(self):
         """
@@ -119,18 +142,11 @@ class FlaskSerializeMixin:
         :return {dictionary} the item as a dict
         """
 
-        def property_converter(value):
-            if isinstance(value, datetime):
-                return self.to_date_short(value)
-            return value
-
-        def relationship_converter(relationships):
-            return [item.as_dict for item in relationships]
-
         # built in converters
+        # can be replaced dynamically using column_type_converters
 
-        __converters = {'DATETIME': self.to_date_short, 'PROPERTY': property_converter,
-                        'RELATIONSHIP': relationship_converter}
+        converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
+                      'RELATIONSHIP': self.relationship_converter}
 
         d = {}
         # SQL columns
@@ -142,7 +158,7 @@ class FlaskSerializeMixin:
         exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
         # add custom converters
         for converter, method in self.column_type_converters.items():
-            __converters[converter] = method
+            converters[converter] = method
 
         for c in field_list:
             if c.name in exclude_fields:
@@ -153,9 +169,9 @@ class FlaskSerializeMixin:
                 v = ''
             c_type = str(c.type)
 
-            if c_type in __converters and v is not None:
+            if c_type in converters and v is not None:
                 try:
-                    d[c.name] = __converters[c_type](v) if __converters[c_type] else v
+                    d[c.name] = converters[c_type](v) if converters[c_type] else v
                 except Exception as e:
                     d[c.name] = 'Error:"{}". Failed to convert type:{}'.format(e, c_type)
             elif v is None:
@@ -220,7 +236,7 @@ class FlaskSerializeMixin:
 
     def request_update_json(self):
         """
-        Update an item from json data, probably from a PUT or PATCH.
+        Update an item from request json data, probably from a PUT or PATCH.
         Throws exception if not valid
         :return: True if item updated
         """

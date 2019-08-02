@@ -107,6 +107,7 @@ def test_get_property(client):
     assert json_settings['prop_test'] == 'prop:' + test_value
     assert json_settings['prop_datetime'] == str(setting.created).split('.')[0]
     assert json_settings['prop_test_dict'] == {'prop': test_value}
+    assert set(json_settings['prop_set']) == set([3, 1, 2, 'four'])
 
 
 def test_relationships(client):
@@ -165,7 +166,7 @@ def test_column_conversion(client):
     assert converted_date != un_converted_date
     assert type(un_converted_date) == datetime
     # failed conversion
-    item.column_type_converters = {'VARCHAR(3000)': lambda v: 2/0}
+    item.column_type_converters = {'VARCHAR(3000)': lambda v: 2 / 0}
     assert item.as_dict['value'] == 'Error:"division by zero". Failed to convert type:VARCHAR(3000)'
 
 
