@@ -157,7 +157,7 @@ class FlaskSerializeMixin:
                 try:
                     d[c.name] = __converters[c_type](v) if __converters[c_type] else v
                 except Exception as e:
-                    d[c.name] = 'Error:{}  Failed to covert using {}'.format(e, c_type)
+                    d[c.name] = 'Error:"{}". Failed to convert type:{}'.format(e, c_type)
             elif v is None:
                 d[c.name] = ''
             else:

@@ -59,9 +59,15 @@ def test_get_all(client):
     assert len(json_settings) == 1
     assert json_settings[0]['key'] == key
     with app.app_context():
+        # filter by
         rv = Setting.json_filter_by(key=key)
         json_settings = json.loads(rv.data)
         assert json_settings[0]['key'] == key
+    # all as dict list
+    result = Setting.query.all()
+    dict_list = Setting.dict_list(result)
+    assert len(dict_list) == 1
+    assert dict_list[0]['key'] == key
 
 
 def test_get_user(client):
@@ -81,6 +87,12 @@ def test_get_user(client):
     rv = client.get('/setting_user/{}'.format('no-one'))
     json_settings = json.loads(rv.data)
     assert len(json_settings) == 0
+    user_404 = None
+    try:
+        user_404 = Setting.get_by_user_or_404(item_id=item['id'], user='not-here')
+    except Exception as e:
+        assert '404 Not Found:' in str(e)
+    assert user_404 is None
 
 
 def test_get_property(client):
@@ -152,6 +164,9 @@ def test_column_conversion(client):
     un_converted_date = item.as_dict['updated']
     assert converted_date != un_converted_date
     assert type(un_converted_date) == datetime
+    # failed conversion
+    item.column_type_converters = {'VARCHAR(3000)': lambda v: 2/0}
+    assert item.as_dict['value'] == 'Error:"division by zero". Failed to convert type:VARCHAR(3000)'
 
 
 def test_update_create_type_conversion(client):
