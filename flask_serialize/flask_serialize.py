@@ -299,9 +299,9 @@ class FlaskSerializeMixin:
         :return: json object: {error, message}, or the item.  error == None for correct operation
         """
         item = None
-        if user and item_id:
+        if user is not None and item_id is not None:
             item = cls.get_by_user_or_404(item_id, user=user)
-        if item_id:
+        if item_id is not None:
             item = cls.query.get_or_404(item_id)
         elif request.method == 'GET':
             # no item id get a list of items
