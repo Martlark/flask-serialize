@@ -377,3 +377,19 @@ def test_json_get(client):
     assert json_first_item['key'] == key
     assert json_first_item['setting_type'] == setting_type
     assert json.loads(client.get('/setting_json_first/{}'.format(random_string())).data) == {}
+
+
+def test_get_0_is_not_null(client):
+    key = random_string()
+    item = Setting(id=0, setting_type='hello', value=random_string(), key=key)
+    db.session.add(item)
+    db.session.commit()
+    # should get one item and not a list
+    response = client.get('/setting_get_all')
+    assert response.status_code == 200
+    json_items = json.loads(response.data)
+    assert len(json_items) == 1
+    response = client.get('/setting_get/0')
+    assert response.status_code == 200
+    json_item = json.loads(response.data)
+    assert json_item['key'] == key

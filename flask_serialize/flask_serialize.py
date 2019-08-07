@@ -307,12 +307,14 @@ class FlaskSerializeMixin:
             # no item id get a list of items
             if user:
                 return cls.json_list(cls.query.filter_by(user=user))
-            else:
-                return cls.json_list(cls.query.all())
+
+            return cls.json_list(cls.query.all())
 
         if not item:
             if request.method == 'POST':
                 return cls.request_create_form().as_json
+
+            abort(404)
 
         # get a single item
         if request.method == 'GET':
@@ -350,7 +352,7 @@ class FlaskSerializeMixin:
         """
         return the first result in json format using the filter_by arguments
         :param kwargs: SQLAlchemy query.filter_by arguments
-        :return: flask response json item or {} if no results
+        :return: flask response json item or {} if no result
         """
         item = cls.query.filter_by(**kwargs).first()
         if not item:
