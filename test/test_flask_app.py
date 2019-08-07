@@ -31,16 +31,16 @@ class EditForm(FlaskForm):
 # and get single
 @app.route('/setting_post', methods=['POST'])
 @app.route('/setting_get_all', methods=['GET'])
-@app.route('/setting_post/<item_id>', methods=['POST'])
-@app.route('/setting_put/<item_id>', methods=['PUT'])
-@app.route('/setting_get/<item_id>', methods=['GET'])
+@app.route('/setting_post/<int:item_id>', methods=['POST'])
+@app.route('/setting_put/<int:item_id>', methods=['PUT'])
+@app.route('/setting_get/<int:item_id>', methods=['GET'])
 @app.route('/setting_user/<user>', methods=['GET'])
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
 def route_setting_get_delete_put_post(item_id=None, user=None):
     return Setting.get_delete_put_post(item_id, user)
 
 
-@app.route('/setting_get_json/<item_id>', methods=['GET'])
+@app.route('/setting_get_json/<int:item_id>', methods=['GET'])
 def route_setting_get_json(item_id):
     return Setting.json_get(item_id)
 
@@ -62,7 +62,7 @@ def route_setting_get_key(key):
 
 # Delete a single item.
 
-@app.route('/setting_delete/<item_id>', methods=['DELETE'])
+@app.route('/setting_delete/<int:item_id>', methods=['DELETE'])
 def route_setting_delete(item_id):
     return Setting.get_delete_put_post(item_id)
 
