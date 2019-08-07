@@ -3,10 +3,38 @@ flask-serialize
 
 |PyPI Version|
 
-Read / Write JSON serialization of models for Flask applications using SQLAlchemy
----------------------------------------------------------------------------------
+DB Model JSON serialization and PUT/POST write for Flask applications using SQLAlchemy
+=======================================================================================
 
-Add as a Mixin (FlaskSerializeMixin).  This adds the properties and methods for serialization.
+Simple and quick to get going in two steps.
+-------------------------------------------------
+
+1. Import and add the FlaskSerializeMixin mixin to a model:
+    
+.. code:: python
+
+    from flask-serialize import FlaskSerializeMixin
+
+    class Item(db.model, FlaskSerializeMixin):
+        id = db.Column(db.Integer, primary_key=True)
+        # other fields ...
+
+2. Configure the route with the do all mixin method:
+
+.. code:: python
+
+    @app.route('/item/<int:item_id>')
+    @app.route('/items')
+    return Item.get_delete_put_post(item_id=None)
+
+3. Done!  Returns a single item or a list of items in a single route.
+
+Flask-serialize is intended for joining a Flask SQLAlchemy Python backend with
+a JavaScript Web client.  It allows read JSON serialization
+from the db and easy to use write back of models using PUT and POST.
+
+It is not intended to be a full two way serialization package.  Use
+`marshmallow` for more complicated systems.
 
 Example:
 ========
