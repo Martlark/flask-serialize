@@ -486,6 +486,17 @@ Example:
     def address_list():
         return Address.filter_by(user=current_user)
 
+``json_first``
+
+.. code:: python
+
+    def json_first(cls, **kwargs):
+        """
+        return the first result in json format using the filter_by arguments
+        :param kwargs: SQLAlchemy query.filter_by arguments
+        :return: flask response json item or {} if no result
+        """
+
 Licensing
 ---------
 
