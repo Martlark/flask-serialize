@@ -234,10 +234,40 @@ List of model field names to not serialize when return as json.
 
     exclude_json_serialize_fields = []
 
+Verify write and create
+-----------------------
+
+.. code:: python
+
+    def verify(self, create=False):
+        """
+        raise exception if item is not valid for put/patch/post
+        :param: create - True if verification is for a new item
+        """
+
+Override the mixin verify method to provide control and verification
+when updating and creating model items.  Simply raise an exception
+when there is a problem.  You can also modify `self` data before writing.
+ See model example.
+
+Controlling delete
+------------------
+
+.. code:: python
+
+    def can_delete(self):
+        """
+        raise exception if item cannot be deleted
+        """
+
+Override the mixin can_delete to provide control over when an
+item can be deleted.  Simply raise an exception
+when there is a problem.  See model example.
+
 Updating fields specification
 -----------------------------
 
-List of model fields to be read from a form or json when updating an object.  Normally
+List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.
 
 .. code:: python
