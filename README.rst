@@ -247,8 +247,7 @@ Verify write and create
 
 Override the mixin verify method to provide control and verification
 when updating and creating model items.  Simply raise an exception
-when there is a problem.  You can also modify `self` data before writing.
- See model example.
+when there is a problem.  You can also modify `self` data before writing. See model example.
 
 Controlling delete
 ------------------
