@@ -27,6 +27,7 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # this is required to be set for updating/deletion functions
     db = None
+    version = '1.0.2'
 
     def to_date_short(self, d):
         """
