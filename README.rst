@@ -15,7 +15,7 @@ Simple and quick to get going in two steps.
 
     from flask-serialize import FlaskSerializeMixin
 
-    class Item(db.model, FlaskSerializeMixin):
+    class Item(db.Model, FlaskSerializeMixin):
         id = db.Column(db.Integer, primary_key=True)
         # other fields ...
 
