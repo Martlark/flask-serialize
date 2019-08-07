@@ -384,11 +384,13 @@ def test_get_0_is_not_null(client):
     item = Setting(id=0, setting_type='hello', value=random_string(), key=key)
     db.session.add(item)
     db.session.commit()
-    # should get one item and not a list
+    # should get a list
     response = client.get('/setting_get_all')
     assert response.status_code == 200
     json_items = json.loads(response.data)
     assert len(json_items) == 1
+    assert json_items[0]['key'] == key
+    # should get one item not a list
     response = client.get('/setting_get/0')
     assert response.status_code == 200
     json_item = json.loads(response.data)
