@@ -13,7 +13,7 @@ Simple and quick to get going in two steps.
     
 .. code:: python
 
-    from flask-serialize import FlaskSerializeMixin
+    from flask_serialize import FlaskSerializeMixin
 
     class Item(db.Model, FlaskSerializeMixin):
         id = db.Column(db.Integer, primary_key=True)
