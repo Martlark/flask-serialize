@@ -27,7 +27,7 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # this is required to be set for updating/deletion functions
     db = None
-    version = '1.0.2'
+    version = '1.0.3'
 
     def to_date_short(self, d):
         """
@@ -302,7 +302,7 @@ class FlaskSerializeMixin:
         item = None
         if user is not None and item_id is not None:
             item = cls.get_by_user_or_404(item_id, user=user)
-        if item_id is not None:
+        elif item_id is not None:
             item = cls.query.get_or_404(item_id)
         elif request.method == 'GET':
             # no item id get a list of items

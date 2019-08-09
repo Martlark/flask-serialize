@@ -84,6 +84,10 @@ def test_get_user(client):
     rv = client.get('/setting_id_user/{}/{}'.format(item['id'], test_user_name))
     item = json.loads(rv.data)
     assert item['user'] == test_user_name
+    # should not be found
+    rv = client.get('/setting_id_user/{}/{}'.format(item['id'], random_string()))
+    assert rv.status_code == 404
+    # get all by user
     rv = client.get('/setting_user/{}'.format('no-one'))
     json_settings = json.loads(rv.data)
     assert len(json_settings) == 0
