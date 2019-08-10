@@ -282,17 +282,30 @@ List of model fields to be read from a form when creating an object.
 
     create_fields = []
 
-Update date/time fields specification
+Update DateTime fields specification
 -------------------------------------
 
-List of fields on the model to be set when updating/creating 
-with datetime.datetime.now()
+`timestamp_fields` is a list of fields on the model to be set when updating or creating
+with the value of `datetime.datetime.utcnow()`.  The default field names to update are: `['timestamp', 'updated']`.
 
-Default is:
+Example:
 
 .. code:: python
 
-    timestamp_fields = ['updated', 'timestamp']
+
+    class ExampleModel(db.Model, FlaskSerializeMixin):
+        # ....
+        modified = db.Column(db.DateTime, default=datetime.utcnow)
+        timestamp_fields = ['modified']
+
+Override the timestamp default of `utcnow()` by replacing the `timestamp_stamper` class property with your
+own.  Example:
+
+.. code:: python
+
+    class ExampleModel(db.Model, FlaskSerializeMixin):
+        # ....
+        timestamp_stamper = datetime.datetime.now
 
 Relationships list of property names that are to be included in serialization
 -----------------------------------------------------------------------------

@@ -13,20 +13,23 @@ class FlaskSerializeMixin:
     # fields that should not be exposed by serialization
     exclude_serialize_fields = []
     exclude_json_serialize_fields = []
-    # fields to be updated
+    # list of fields to be used when updating
     update_fields = []
-    # fields used when creating
+    # list of fields used when creating
     create_fields = []
-    # fields used to set the update date/time
+    # list of fields used to set the update date/time
     timestamp_fields = ['updated', 'timestamp']
+    # method to be used to timestamp with update_timestamp method
+    timestamp_stamper = datetime.utcnow
     # list of property names that are relationships to be included in serialization
     relationship_fields = []
     # add your own converters here
     column_type_converters = {}
     # add or replace conversion types
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
-    # this is required to be set for updating/deletion functions
+    # db is required to be set for updating/deletion functions
     db = None
+    # current version
     version = '1.0.3'
 
     def to_date_short(self, d):
@@ -42,7 +45,7 @@ class FlaskSerializeMixin:
         """
         return the object with the given id that is owned by the given user
         :param item_id: object id
-        :param param: the user to use as a filter, assumes relationship name is user
+        :param user: the user to use as a filter, assumes relationship name is user
         :return: the object
         :throws: 404 exception if not found
         """
@@ -258,11 +261,11 @@ class FlaskSerializeMixin:
 
     def update_timestamp(self):
         """
-        update any timestamp fields with the current local time/date
+        update any timestamp fields using the Class timestamp method
         """
         for field in self.timestamp_fields:
             if hasattr(self, field):
-                setattr(self, field, datetime.now())
+                setattr(self, field, self.timestamp_stamper())
 
     def update_from_dict(self, data_dict):
         """

@@ -254,7 +254,7 @@ def test_get_delete_put_post(client):
     new_value = random_string()
     new_number = random.randint(0, 999)
     rv = client.put('/setting_put/{}'.format(item.id),
-                    data=dict(setting_type='test', key=key, value=new_value, number=new_number))
+                    json=dict(setting_type='test', key=key, value=new_value, number=new_number))
     assert rv.status_code == 200
     assert json.loads(rv.data)['message'] == 'Updated'
     item = Setting.query.filter_by(key=key).first()
@@ -336,7 +336,7 @@ def test_raise_error_for_update_fields(client):
     assert rv.status_code == 500
     assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
     # json
-    rv = client.put('/setting_update/{}'.format(item.id), data=dict(setting_type='test', key=key, value='test-value'))
+    rv = client.put('/setting_update/{}'.format(item.id), json=dict(setting_type='test', key=key, value='test-value'))
     assert rv.status_code == 500
     assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
     Setting.update_fields = old_fields
@@ -399,3 +399,22 @@ def test_get_0_is_not_null(client):
     assert response.status_code == 200
     json_item = json.loads(response.data)
     assert json_item['key'] == key
+
+
+def test_timestamp_is_updated_and_can_be_overridden(client):
+    key = random_string()
+    item = Setting(setting_type='hello', value=random_string(), key=key)
+    db.session.add(item)
+    db.session.commit()
+    new_value = random_string()
+    item = Setting.query.get_or_404(item.id)
+    sub_item = item.add_sub(new_value)
+    sub_item_id = sub_item.id
+    updated_when_created = sub_item.sub_updated
+    # update using put
+    new_value = random_string()
+    assert 200 == client.put('/sub_setting_put/{}'.format(sub_item_id), json=dict(flong=new_value)).status_code
+    updated_item = SubSetting.query.get_or_404(sub_item_id)
+    assert updated_item.flong == new_value
+    # test custom update works and that timestamp_fields works
+    assert updated_when_created > updated_item.sub_updated

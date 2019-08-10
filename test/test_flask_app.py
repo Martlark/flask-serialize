@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, redirect, url_for, render_template_string, abort, Response
@@ -38,6 +38,11 @@ class EditForm(FlaskForm):
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
 def route_setting_get_delete_put_post(item_id=None, user=None):
     return Setting.get_delete_put_post(item_id, user)
+
+
+@app.route('/sub_setting_put/<int:item_id>', methods=['PUT'])
+def route_sub_setting_get_delete_put_post(item_id=None, user=None):
+    return SubSetting.get_delete_put_post(item_id, user)
 
 
 @app.route('/setting_get_json/<int:item_id>', methods=['GET'])
@@ -133,9 +138,16 @@ FlaskSerializeMixin.db = db
 class SubSetting(FlaskSerializeMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created = db.Column(db.DateTime, default=datetime.utcnow)
+    sub_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
     flong = db.Column(db.String(120), index=True, default='flang')
+
+    update_fields = ['flong']
+
+    @staticmethod
+    def one_day_ago():
+        return datetime.utcnow() - timedelta(days=1)
 
     def to_date_short(self, date_value):
         """
@@ -147,6 +159,9 @@ class SubSetting(FlaskSerializeMixin, db.Model):
             return 0
 
         return int(time.mktime(date_value.timetuple())) * 1000
+
+    timestamp_fields = ['sub_updated']
+    timestamp_stamper = one_day_ago
 
 
 class Setting(FlaskSerializeMixin, db.Model):
@@ -198,6 +213,12 @@ class Setting(FlaskSerializeMixin, db.Model):
     @property
     def prop_set(self):
         return set([1, 2, 3, 'four'])
+
+    def add_sub(self, flong):
+        sub = SubSetting(setting=self, flong=flong)
+        db.session.add(sub)
+        db.session.commit()
+        return sub
 
     def __repr__(self):
         return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
