@@ -260,6 +260,7 @@ def test_get_delete_put_post(client):
                     json=dict(setting_type='test', key=key, value=new_value, number=new_number))
     assert rv.status_code == 200
     assert json.loads(rv.data)['message'] == 'Updated'
+    assert rv.json['properties']['prop_test'] == 'prop:' + new_value
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == new_value
