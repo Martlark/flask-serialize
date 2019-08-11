@@ -184,6 +184,7 @@ class Setting(FlaskSerializeMixin, db.Model):
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
+    update_properties = ['prop_test']
 
     # checks if Flask-Serialize can delete
     def can_delete(self):

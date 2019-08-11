@@ -27,10 +27,12 @@ class FlaskSerializeMixin:
     column_type_converters = {}
     # add or replace conversion types
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+    # properties or fields to return when updating using get or post
+    update_properties = []
     # db is required to be set for updating/deletion functions
     db = None
     # current version
-    version = '1.0.3'
+    version = '1.0.4'
 
     def to_date_short(self, d):
         """
@@ -294,6 +296,21 @@ class FlaskSerializeMixin:
         """
         pass
 
+    def return_properties(self):
+        """
+        when returning success codes from a put/post update return a dict
+        composed of the property values from the update_properties list.
+        ie:
+        return jsonify({'message': 'Updated', 'properties': item.return_properties()})
+        this can be used to communicate from the model on the server to the JavaScript code
+        interesting things from updates
+        :return: dictionary of properties
+        """
+        props = {}
+        for prop in self.update_properties:
+            props[prop] = self.property_converter(getattr(self, prop))
+        return props
+
     @classmethod
     def get_delete_put_post(cls, item_id=None, user=None):
         """
@@ -330,7 +347,7 @@ class FlaskSerializeMixin:
                 item.request_update_form()
             except Exception as e:
                 return jsonify({'error': str(e)})
-            return jsonify({'message': 'Updated'})
+            return jsonify(dict(message='Updated', properties=item.return_properties()))
 
         elif request.method == 'DELETE':
             # delete a single item
@@ -349,7 +366,7 @@ class FlaskSerializeMixin:
         except Exception as e:
             return jsonify(dict(error=str(e), message=''))
 
-        return jsonify(dict(error=None, message='Updated'))
+        return jsonify(dict(error=None, message='Updated', properties=item.return_properties()))
 
     @classmethod
     def json_first(cls, **kwargs):

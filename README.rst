@@ -273,6 +273,36 @@ admin fields such as login_counts or security fields are excluded.
 
     update_fields = []
 
+Update Properties
+-----------------
+
+When returning a success code from a put or post update a dict
+composed of the property values from the update_properties list is returned
+as "properties".
+
+.. code:: python
+
+    update_properties = []
+
+Example return JSON:
+
+.. code:: python
+
+    class ExampleModel(db.Model, FlaskSerializeMixin):
+        update_fields = ['new_hat_size']
+
+        @property
+        def new_hat_size(self):
+            return self.head_size * self.ear_width
+
+.. code:: JavaScript
+
+    // result update return message
+    {message: "Updated", properties: {new_hat_size: 45.67} }
+
+This can be used to communicate from the model on the server to the JavaScript code
+interesting things from updates
+
 Creation fields used when creating specification
 ------------------------------------------------
 
