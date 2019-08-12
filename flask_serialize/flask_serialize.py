@@ -32,7 +32,7 @@ class FlaskSerializeMixin:
     # db is required to be set for updating/deletion functions
     db = None
     # current version
-    version = '1.0.4'
+    version = '1.0.5'
 
     def to_date_short(self, d):
         """
@@ -171,8 +171,8 @@ class FlaskSerializeMixin:
                 continue
             try:
                 v = getattr(self, c.name)
-            except:
-                v = ''
+            except Exception as e:
+                v = str(e)
             c_type = str(c.type)
 
             if c_type in converters and v is not None:

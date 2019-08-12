@@ -109,6 +109,7 @@ def test_get_property(client):
     assert rv.status_code == 200
     json_settings = json.loads(rv.data)
     assert json_settings['prop_test'] == 'prop:' + test_value
+    assert json_settings['prop_error'] == 'division by zero'
     assert json_settings['prop_datetime'] == str(setting.created).split('.')[0]
     assert json_settings['prop_test_dict'] == {'prop': test_value}
     assert set(json_settings['prop_set']) == set([3, 1, 2, 'four'])

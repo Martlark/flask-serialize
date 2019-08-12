@@ -204,6 +204,10 @@ class Setting(FlaskSerializeMixin, db.Model):
         return 'prop:' + self.value
 
     @property
+    def prop_error(self):
+        return 'prop:' + str(1/0)
+
+    @property
     def prop_test_dict(self):
         return {'prop': self.value}
 
