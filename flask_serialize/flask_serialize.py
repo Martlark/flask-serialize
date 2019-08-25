@@ -17,6 +17,9 @@ class FlaskSerializeMixin:
     update_fields = []
     # list of fields used when creating
     create_fields = []
+    # order by ascending field
+    order_by_field = None
+    order_by_field_desc = None
     # list of fields used to set the update date/time
     timestamp_fields = ['updated', 'timestamp']
     # method to be used to timestamp with update_timestamp method
@@ -37,6 +40,7 @@ class FlaskSerializeMixin:
     def to_date_short(self, d):
         """
         convert the given date field to a short date / time without fractional seconds
+
         :param d: {datetime.datetime} the value to convert
         :return: {String} the short date
         """
@@ -46,6 +50,7 @@ class FlaskSerializeMixin:
     def get_by_user_or_404(cls, item_id, user):
         """
         return the object with the given id that is owned by the given user
+
         :param item_id: object id
         :param user: the user to use as a filter, assumes relationship name is user
         :return: the object
@@ -60,6 +65,7 @@ class FlaskSerializeMixin:
     def json_filter_by(cls, **kwargs):
         """
         return a list in json format using the filter_by arguments
+
         :param kwargs: SQLAlchemy query.filter_by arguments
         :return: flask response with json list of results
         """
@@ -70,6 +76,7 @@ class FlaskSerializeMixin:
     def json_get(cls, item_id):
         """
         return an item in json format using the item_id as a primary key
+
         :param item_id: {primary key} the primary key of the item to get
         :return: flask response with json item, or {} if not found
         """
@@ -81,17 +88,27 @@ class FlaskSerializeMixin:
     @classmethod
     def json_list(cls, query_result):
         """
-        return a list in json format from the query_result
+        Return a list in json format from the query_result.
+        When order_by_field is defined sort by that field in ascending order.
+
         :param query_result: sql alchemy query result
         :return: flask response with json list of results
         """
-        return jsonify([item.__as_exclude_json_dict() for item in query_result])
+        # ascending
+        items = [item.__as_exclude_json_dict() for item in query_result]
+        if len(items) > 0 and cls.order_by_field:
+            items = sorted(items, key=lambda i: i[cls.order_by_field])
+        # descending
+        if len(items) > 0 and cls.order_by_field_desc:
+            items = sorted(items, key=lambda i: i[cls.order_by_field_desc], reverse=True)
+        return jsonify(items)
 
     @classmethod
     def dict_list(cls, query_result):
         """
         return a list of dictionary objects from the sql query result
         without exclude_serialize_fields fields
+
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
@@ -101,6 +118,7 @@ class FlaskSerializeMixin:
     def as_json(self):
         """
         the sql object as a json object without the excluded fields
+
         :return: flask response json object
         """
         return jsonify(self.__as_exclude_json_dict())
@@ -109,6 +127,7 @@ class FlaskSerializeMixin:
         """
         private: get a dict that is used to serialize to web clients
         without fields in exclude_json_serialize_fields and exclude_serialize_fields
+
         :return: dictionary
         """
         return {k: v for k, v in self.as_dict.items() if k not in self.exclude_json_serialize_fields}
@@ -117,6 +136,7 @@ class FlaskSerializeMixin:
         """
         convert datetime and set to a json compatible format.
         override this method to alter default
+
         :param value: value to convert
         :return: the new value
         """
@@ -131,6 +151,7 @@ class FlaskSerializeMixin:
         """
         convert a child SQLalchemy result set into a python
         dictionary list.
+
         :param relationships: SQLAlchemy result set
         :return: list of dict objects
         """
@@ -192,6 +213,7 @@ class FlaskSerializeMixin:
         convert the value based upon type to a representation suitable for saving to the db
         override built in conversions by setting the value of convert_types. ie:
         convert_types = [{'type':bool, 'method': lambda x: not x}]
+
         :param value:
         :return: the converted value
         """
@@ -206,6 +228,7 @@ class FlaskSerializeMixin:
         update/create the item using form data from the request object
         only present fields are updated
         throws error if validation fails
+
         :return: True when complete
         """
         self.update_from_dict(request.form)
@@ -220,6 +243,7 @@ class FlaskSerializeMixin:
         """
         create a new item from a form in the current request object
         throws error if something wrong
+
         :return: the new created item
         """
         new_item = cls()
@@ -244,6 +268,7 @@ class FlaskSerializeMixin:
         """
         Update an item from request json data, probably from a PUT or PATCH.
         Throws exception if not valid
+
         :return: True if item updated
         """
 
@@ -272,6 +297,7 @@ class FlaskSerializeMixin:
     def update_from_dict(self, data_dict):
         """
         uses a dict to update fields of the model instance
+
         :param data_dict:
         :return:
         """
@@ -285,6 +311,7 @@ class FlaskSerializeMixin:
     def can_delete(self):
         """
         raise a message if deletion is not allowed
+
         :return:
         """
         pass
@@ -292,6 +319,7 @@ class FlaskSerializeMixin:
     def verify(self, create=False):
         """
         raise exception if item is not valid for put/patch/post
+
         :param: create - True if verification is for a new item
         """
         pass
@@ -304,6 +332,7 @@ class FlaskSerializeMixin:
         return jsonify({'message': 'Updated', 'properties': item.return_properties()})
         this can be used to communicate from the model on the server to the JavaScript code
         interesting things from updates
+
         :return: dictionary of properties
         """
         props = {}
@@ -315,6 +344,7 @@ class FlaskSerializeMixin:
     def get_delete_put_post(cls, item_id=None, user=None):
         """
         get, delete, post, put with JSON/FORM a single model item
+
         :param item_id: the primary key of the item - if none and method is 'GET' returns all items
         :param user: user to user as query filter.
         :return: json object: {error, message}, or the item.  error == None for correct operation
@@ -372,6 +402,7 @@ class FlaskSerializeMixin:
     def json_first(cls, **kwargs):
         """
         return the first result in json format using the filter_by arguments
+
         :param kwargs: SQLAlchemy query.filter_by arguments
         :return: flask response json item or {} if no result
         """

@@ -46,6 +46,37 @@ def add_setting(client, key=random_string(), value='test-value'):
     return item
 
 
+def test_order_by_field(client):
+    # add plenty
+    count = 10
+    for z in range(count):
+        add_setting(client, key=str(z), value=str(z+1))
+
+    Setting.order_by_field = 'id'
+    rv = client.get('/setting_get_all')
+    assert rv.status_code == 200
+    json_settings = rv.json
+    assert len(json_settings) == count
+    sorted_list = sorted(json_settings, key=lambda i: i['id'])
+    for z in range(count):
+        assert json_settings[z]['id'] == sorted_list[z]['id']
+    # ascending.
+    Setting.order_by_field = 'value'
+    rv = client.get('/setting_get_all')
+    json_settings = rv.json
+    sorted_list = sorted(json_settings, key=lambda i: i['value'])
+    for z in range(count):
+        assert json_settings[z]['value'] == sorted_list[z]['value']
+    Setting.order_by_field = None
+    Setting.order_by_field_desc = 'value'
+    # descending
+    rv = client.get('/setting_get_all')
+    json_settings = rv.json
+    sorted_list = sorted(json_settings, key=lambda i: i['value'], reverse=True)
+    for z in range(count):
+        assert json_settings[z]['value'] == sorted_list[z]['value']
+
+
 def test_get_all(client):
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
