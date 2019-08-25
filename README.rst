@@ -312,6 +312,16 @@ List of model fields to be read from a form when creating an object.
 
     create_fields = []
 
+Sorting json list results
+-------------------------
+
+Json result lists can be sorted by using the `order_by_field` or the `order_by_field_desc` properties.  To sort by id
+ascending use this example:
+
+.. code:: python
+
+    order_by_field = 'id'
+
 Update DateTime fields specification
 -------------------------------------
 
