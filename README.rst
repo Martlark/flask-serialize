@@ -25,7 +25,8 @@ Simple and quick to get going in two steps.
 
     @app.route('/item/<int:item_id>')
     @app.route('/items')
-    return Item.get_delete_put_post(item_id=None)
+    def items(item_id=None):
+        return Item.get_delete_put_post(item_id)
 
 3. Done!  Returns a single item or a list of items in a single route.
 
