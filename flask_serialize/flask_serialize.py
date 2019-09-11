@@ -35,7 +35,7 @@ class FlaskSerializeMixin:
     # db is required to be set for updating/deletion functions
     db = None
     # current version
-    version = '1.0.5'
+    version = '1.0.6'
 
     def to_date_short(self, d):
         """
