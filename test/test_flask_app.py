@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timedelta
 
 from flask_sqlalchemy import SQLAlchemy
-from flask import Flask, redirect, url_for, render_template_string, abort, Response
+from flask import Flask, redirect, url_for, render_template_string, abort, Response, request
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
 
@@ -37,6 +37,9 @@ class EditForm(FlaskForm):
 @app.route('/setting_user/<user>', methods=['GET'])
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
 def route_setting_get_delete_put_post(item_id=None, user=None):
+    key = request.args.get('key')
+    if key:
+        return Setting.get_delete_put_post(item_id, prop_filters={"key": key})
     return Setting.get_delete_put_post(item_id, user)
 
 
@@ -206,7 +209,7 @@ class Setting(FlaskSerializeMixin, db.Model):
 
     @property
     def prop_error(self):
-        return 'prop:' + str(1/0)
+        return 'prop:' + str(1 / 0)
 
     @property
     def prop_test_dict(self):
@@ -228,3 +231,11 @@ class Setting(FlaskSerializeMixin, db.Model):
 
     def __repr__(self):
         return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
+
+
+if __name__ == '__main__':
+    app.config['TESTING'] = True
+    app.config['SECRET_KEY'] = 'Testing'
+    app.config['WTF_CSRF_ENABLED'] = False
+    db.create_all()
+    app.run(debug=True, port=5055)

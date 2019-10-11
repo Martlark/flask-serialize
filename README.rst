@@ -313,6 +313,22 @@ List of model fields to be read from a form when creating an object.
 
     create_fields = []
 
+Filtering json list results
+---------------------------
+
+Json result lists can be filtered by using the `prop_filters` on either
+the `get_delete_put_post` method or the `json_list` method.
+
+The filter consists of one or more properties in the json result and
+the value that it must match.  Filter items will match against the
+first prop_filter property to exactly equal the value.
+
+Example:
+
+.. code:: python
+
+    result = get_delete_put_post(prop_filters = {'key':'dogs'})
+
 Sorting json list results
 -------------------------
 
@@ -441,7 +457,7 @@ GET    returns one item when `item_id` is a primary key
 GET    returns all items when `item_id` is None
 PUT    updates item using `item_id` as the id from request json data
 DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error
-POST   creates and returns a Flask response with a new item as json from form data when `item_id` is None
+POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None
 POST   updates an item from form data using `item_id`. Returns Flask response of {'message':'something', 'error':'any error message'}
 ====== ==============================================================================================================================
 

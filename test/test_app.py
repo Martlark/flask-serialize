@@ -50,7 +50,7 @@ def test_order_by_field(client):
     # add plenty
     count = 10
     for z in range(count):
-        add_setting(client, key=str(z), value=str(z+1))
+        add_setting(client, key=str(z), value=str(z + 1))
 
     Setting.order_by_field = 'id'
     rv = client.get('/setting_get_all')
@@ -75,6 +75,26 @@ def test_order_by_field(client):
     sorted_list = sorted(json_settings, key=lambda i: i['value'], reverse=True)
     for z in range(count):
         assert json_settings[z]['value'] == sorted_list[z]['value']
+
+
+def test_get_filter(client):
+    key_1 = random_string()
+    key_2 = random_string()
+    # test add
+    add_setting(client, key=key_1)
+    add_setting(client, key=key_2)
+    rv = client.get('/setting_get_all')
+    assert rv.status_code == 200
+    json_settings = json.loads(rv.data)
+    assert len(json_settings) == 2
+    rv = client.get(f'/setting_get_all?key={key_1}')
+    json_settings = json.loads(rv.data)
+    assert json_settings[0]['key'] == key_1
+    assert len(json_settings) == 1
+    rv = client.get(f'/setting_get_all?key={key_2}')
+    json_settings = json.loads(rv.data)
+    assert len(json_settings) == 1
+    assert json_settings[0]['key'] == key_2
 
 
 def test_get_all(client):
@@ -302,6 +322,23 @@ def test_get_delete_put_post(client):
     assert rv.status_code == 200
     json_result = json.loads(rv.data)
     assert json_result['error'] == 'Missing key'
+
+
+def test_create_update_json(client):
+    # create
+    key = random_string()
+    value = random_string()
+    rv = client.post('/setting_post', json=dict(setting_type='test', key=key, value=value, number=10))
+    assert rv.status_code == 200
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == value
+    value=random_string()
+    rv = client.post(f'/setting_post/{item.id}', json=dict(setting_type='test', key=key, value=value, number=10))
+    assert rv.status_code == 200
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == value
 
 
 def test_create_update_delete(client):

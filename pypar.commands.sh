@@ -23,5 +23,5 @@ pip install pytest-flask
 # on each release
 
 python setup.py sdist bdist_wheel
-twine check dist/flask_serialize-1.0.6*
-twine upload dist/flask_serialize-1.0.6* -u martlark
+twine check dist/flask_serialize-1.0.7*
+twine upload dist/flask_serialize-1.0.7* -u martlark

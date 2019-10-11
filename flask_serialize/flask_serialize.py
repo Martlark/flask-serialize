@@ -35,7 +35,7 @@ class FlaskSerializeMixin:
     # db is required to be set for updating/deletion functions
     db = None
     # current version
-    version = '1.0.6'
+    version = '1.0.7'
 
     def to_date_short(self, d):
         """
@@ -86,21 +86,34 @@ class FlaskSerializeMixin:
         return item.as_json
 
     @classmethod
-    def json_list(cls, query_result):
+    def json_list(cls, query_result, prop_filters=None):
         """
         Return a list in json format from the query_result.
         When order_by_field is defined sort by that field in ascending order.
 
         :param query_result: sql alchemy query result
+        :param prop_filters: dictionary of filter elements to restrict results
         :return: flask response with json list of results
         """
         # ascending
         items = [item.__as_exclude_json_dict() for item in query_result]
+
         if len(items) > 0 and cls.order_by_field:
             items = sorted(items, key=lambda i: i[cls.order_by_field])
+
         # descending
         if len(items) > 0 and cls.order_by_field_desc:
             items = sorted(items, key=lambda i: i[cls.order_by_field_desc], reverse=True)
+
+        if prop_filters:
+            filtered_result = []
+            for item in items:
+                for k, v in prop_filters.items():
+                    if item.get(k) == v:
+                        filtered_result.append(item)
+                        break
+            items = filtered_result
+
         return jsonify(items)
 
     @classmethod
@@ -231,7 +244,10 @@ class FlaskSerializeMixin:
 
         :return: True when complete
         """
-        self.update_from_dict(request.form)
+        if request.content_type == 'application/json':
+            self.request_update_json()
+        else:
+            self.update_from_dict(request.form)
         self.verify()
         self.update_timestamp()
         self.db.session.add(self)
@@ -252,11 +268,16 @@ class FlaskSerializeMixin:
         if len(new_item.create_fields or '') == 0:
             raise Exception('create_fields is empty')
 
-        for field in cls.create_fields:
-            value = request.form.get(field)
-            # cls_column = getattr(cls, field)
-            # cls_column_type = str(cls_column.type.python_type)  # str,datetime.datetime,float,int
-            setattr(new_item, field, new_item.__convert_value(value))
+        try:
+            json_data = request.get_json(force=True)
+            if len(json_data) > 0:
+                for field in cls.create_fields:
+                    value = json_data.get(field)
+                    setattr(new_item, field, new_item.__convert_value(value))
+        except:
+            for field in cls.create_fields:
+                value = request.form.get(field)
+                setattr(new_item, field, new_item.__convert_value(value))
 
         new_item.verify(create=True)
         new_item.update_timestamp()
@@ -341,7 +362,7 @@ class FlaskSerializeMixin:
         return props
 
     @classmethod
-    def get_delete_put_post(cls, item_id=None, user=None):
+    def get_delete_put_post(cls, item_id=None, user=None, prop_filters=None):
         """
         get, delete, post, put with JSON/FORM a single model item
 
@@ -357,9 +378,10 @@ class FlaskSerializeMixin:
         elif request.method == 'GET':
             # no item id get a list of items
             if user:
-                return cls.json_list(cls.query.filter_by(user=user))
-
-            return cls.json_list(cls.query.all())
+                result =cls.query.filter_by(user=user)
+            else:
+                result = cls.query.all()
+            return cls.json_list(result, prop_filters=prop_filters)
 
         if not item:
             if request.method == 'POST':
