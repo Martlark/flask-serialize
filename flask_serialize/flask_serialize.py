@@ -368,6 +368,7 @@ class FlaskSerializeMixin:
 
         :param item_id: the primary key of the item - if none and method is 'GET' returns all items
         :param user: user to user as query filter.
+        :param prop_filters: dictionary of key:value pairs to limit results to.
         :return: json object: {error, message}, or the item.  error == None for correct operation
         """
         item = None
