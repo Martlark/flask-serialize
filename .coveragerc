@@ -1,0 +1,7 @@
+[run]
+omit = setup.py
+    .github
+    .idea
+    .pytest_cache
+    dist
+    venv*
