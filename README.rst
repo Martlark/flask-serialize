@@ -35,7 +35,7 @@ a JavaScript Web client.  It allows read JSON serialization
 from the db and easy to use write back of models using PUT and POST.
 
 It is not intended to be a full two way serialization package.  Use
-`marshmallow` for more complicated systems.
+`marshmallow` or similar for more complicated systems.
 
 Example:
 ========
@@ -509,7 +509,7 @@ relationship of user exists.
         :return: list of dict objects
         """
 
-``json_list()``
+``json_list(query_result)``
 
 Return a flask response in json format from a sql alchemy query result.
 
@@ -533,9 +533,9 @@ Example:
         items = Address.query.filter_by(user=current_user)
         return Address.json_list(items)
 
-``json_filter_by()``
+``json_filter_by(**kw_args)``
 
-Return a flask response in json format using a filter_by query.
+Return a flask list response in json format using a filter_by query.
 
 .. code:: python
 
@@ -556,16 +556,25 @@ Example:
     def address_list():
         return Address.filter_by(user=current_user)
 
-``json_first``
+``json_first(**kw_args)``
+
+Return the first result in json format using filter_by arguments.
+
+Example:
 
 .. code:: python
 
-    def json_first(cls, **kwargs):
-        """
-        return the first result in json format using the filter_by arguments
-        :param kwargs: SQLAlchemy query.filter_by arguments
-        :return: flask response json item or {} if no result
-        """
+    @bp.route('/score/<course>', methods=['GET'])
+    @login_required
+    def score(course):
+        return Score.json_first(class_name=course)
+
+Release Notes
+-------------
+
+* 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.
+* 1.0.7 - Add json body support to post update.
+* 1.0.5 - Allow sorting of json lists.
 
 Licensing
 ---------
