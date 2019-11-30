@@ -34,6 +34,8 @@ class FlaskSerializeMixin:
     update_properties = []
     # db is required to be set for updating/deletion functions
     db = None
+    # cache model properties
+    model_props = {}
     # current version
     version = '1.0.7'
 
@@ -136,6 +138,13 @@ class FlaskSerializeMixin:
         """
         return jsonify(self.__as_exclude_json_dict())
 
+    def clear_cache(self):
+        self.model_props = {}
+
+    def set_column_type_converter(self, col_type, method):
+        self.column_type_converters[col_type] = method
+        self.model_props = {}
+
     def __as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
@@ -184,41 +193,46 @@ class FlaskSerializeMixin:
 
         # built in converters
         # can be replaced dynamically using column_type_converters
-
-        converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
-                      'RELATIONSHIP': self.relationship_converter}
-
         d = {}
-        # SQL columns
-        field_list = self.__table__.columns
-        # add extra properties that are not from here
-        field_list += [EasyDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
-                       isinstance(getattr(self.__class__, p), property)]
-        field_list += [EasyDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
-        exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
-        # add custom converters
-        for converter, method in self.column_type_converters.items():
-            converters[converter] = method
+        props = self.model_props.get(self.__table__)
+        if not props:
+            props = EasyDict()
+            props.converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
+                                'RELATIONSHIP': self.relationship_converter}
 
-        for c in field_list:
-            if c.name in exclude_fields:
-                continue
-            try:
-                v = getattr(self, c.name)
-            except Exception as e:
-                v = str(e)
-            c_type = str(c.type)
+            # SQL columns
+            props.exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
+            field_list = self.__table__.columns
+            # add extra properties that are not from here
+            field_list += [EasyDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
+                           isinstance(getattr(self.__class__, p), property)]
+            field_list += [EasyDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
+            # add custom converters
+            for converter, method in self.column_type_converters.items():
+                props.converters[converter] = method
+            # exclude fields / props
+            props.field_list = []
+            for f in field_list:
+                if f.name not in props.exclude_fields:
+                    f.c_type = str(f.type)
+                    f.converter = props.converters.get(f.c_type)
+                    props.field_list.append(f)
 
-            if c_type in converters and v is not None:
+            self.model_props[self.__table__] = props
+
+        for c in props.field_list:
                 try:
-                    d[c.name] = converters[c_type](v) if converters[c_type] else v
+                    d[c.name] = v = getattr(self, c.name, '')
                 except Exception as e:
-                    d[c.name] = 'Error:"{}". Failed to convert type:{}'.format(e, c_type)
-            elif v is None:
-                d[c.name] = ''
-            else:
-                d[c.name] = v
+                    v = str(e)
 
+                if v is None:
+                    d[c.name] = ''
+                elif c.converter:
+                    try:
+                        d[c.name] = c.converter(v)
+                    except Exception as e:
+                        d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
     def __convert_value(self, value):
@@ -379,7 +393,7 @@ class FlaskSerializeMixin:
         elif request.method == 'GET':
             # no item id get a list of items
             if user:
-                result =cls.query.filter_by(user=user)
+                result = cls.query.filter_by(user=user)
             else:
                 result = cls.query.all()
             return cls.json_list(result, prop_filters=prop_filters)

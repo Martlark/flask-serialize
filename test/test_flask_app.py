@@ -178,17 +178,22 @@ class Setting(FlaskSerializeMixin, db.Model):
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(10), default='Andrew')
+    # converter fields
+    splitter = db.Column(db.String(122), index=True)
+    zero = db.Column(db.String(123), default='10')
     # relationships
     sub_settings = db.relationship('SubSetting', backref='setting')
 
     # serializer fields
     update_fields = ['setting_type', 'value', 'key', 'active', 'number']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
     update_properties = ['prop_test']
     order_by_field = 'value'
+    column_type_converters = {'VARCHAR(122)': lambda v: ','.join(str(v).split('.'))}
+    column_type_converters['VARCHAR(123)'] = lambda v: int(v) / 0
 
     # checks if Flask-Serialize can delete
     def can_delete(self):

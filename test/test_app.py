@@ -22,7 +22,6 @@ def random_string(length=20):
 # TESTS
 # =========================
 
-
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
@@ -204,26 +203,11 @@ def test_column_conversion(client):
     # create
     key = random_string()
     value = '12.34'
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
-    assert rv.status_code == 302
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, splitter=value))
     # get
     item = Setting.query.filter_by(key=key).first()
-    assert item
-    assert item.as_dict['value'] == '12.34'
-    item.column_type_converters = {'VARCHAR(3000)': lambda v: ','.join(str(v).split('.'))}
-    assert item.as_dict['value'] == '12,34'
-    # remove custom converter
-    item.column_type_converters = {'VARCHAR(3000)': None}
-    assert item.as_dict['value'] == '12.34'
-    # remove built in DATETIME converter
-    converted_date = item.as_dict['updated']
-    item.column_type_converters = {'DATETIME': None}
-    un_converted_date = item.as_dict['updated']
-    assert converted_date != un_converted_date
-    assert type(un_converted_date) == datetime
-    # failed conversion
-    item.column_type_converters = {'VARCHAR(3000)': lambda v: 2 / 0}
-    assert item.as_dict['value'] == 'Error:"division by zero". Failed to convert type:VARCHAR(3000)'
+    assert item.as_dict['splitter'] == '12,34'
+    assert item.as_dict['zero'] == 'Error:"division by zero". Failed to convert [zero] type:VARCHAR(123)'
 
 
 def test_update_create_type_conversion(client):
@@ -435,6 +419,7 @@ def test_json_get(client):
     test_value = random_string()
     setting_type = random_string()
     # test add setting
+    Setting.model_props = {}
     item = Setting(setting_type=setting_type, key=key, value=test_value)
     db.session.add(item)
     db.session.commit()
