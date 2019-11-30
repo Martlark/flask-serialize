@@ -3,8 +3,8 @@ flask-serialize
 
 |PyPI Version|
 
-DB Model JSON serialization and PUT/POST write for Flask applications using SQLAlchemy
-=======================================================================================
+DB Model JSON serialization with PUT, POST write for Flask applications using SQLAlchemy
+========================================================================================
 
 Simple and quick to get going in two steps.
 -------------------------------------------------
@@ -28,13 +28,15 @@ Simple and quick to get going in two steps.
     def items(item_id=None):
         return Item.get_delete_put_post(item_id)
 
-3. Done!  Returns a single item or a list of items in a single route.
+3. Done!  Returns JSON as a single item or a list with only a single route.
 
 Flask-serialize is intended for joining a Flask SQLAlchemy Python backend with
 a JavaScript Web client.  It allows read JSON serialization
 from the db and easy to use write back of models using PUT and POST.
 
-It is not intended to be a full two way serialization package.  Use
+4 times faster than marshmallow for simple dict serialization.
+
+It is not suitable for two way serialization.  Use
 `marshmallow` or similar for more complicated systems.
 
 Example:
