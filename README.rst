@@ -589,7 +589,7 @@ Create a score item with the parent being a course.
         course = Course.query.get_or_404(course_id)
         return Score.request_create_form(course_id=course.id)
 
-``request_update_form()``
+``request_update_form(**kwargs)``
 
 Use the contents of a Flask request form or request json data to update an item
 in the database.   Calls verify().  Returns True on success.
