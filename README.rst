@@ -575,7 +575,7 @@ Example:
 
 Use the contents of a Flask request form or request json data to create a item
 in the database.   Calls verify(create=True).  Returns the new item or throws error.
-Use **kwargs to set the object properties of the newly created item.
+Use kwargs to set the object properties of the newly created item.
 
 Example:
 
