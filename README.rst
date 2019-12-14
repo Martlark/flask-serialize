@@ -558,7 +558,7 @@ Example:
     def address_list():
         return Address.filter_by(user=current_user)
 
-``json_first(**kw_args)``
+``json_first(**kwargs)``
 
 Return the first result in json format using filter_by arguments.
 
@@ -571,9 +571,28 @@ Example:
     def score(course):
         return Score.json_first(class_name=course)
 
+``request_create_form(**kwargs)``
+
+Use the contents of a Flask request form or request json data to create a item
+in the database.   Calls verify(create=True).  Returns the new item or throws error.
+Use **kwargs to set the object properties of the newly created item.
+
+Example:
+
+Create a score item with the parent being a course.
+
+.. code:: python
+
+    @bp.route('/score/<course_id>', methods=['POST'])
+    @login_required
+    def score(course_id):
+        course = Course.query.get_or_404(course_id)
+        return Score.request_create_form(course_id=course.id)
+
 Release Notes
 -------------
 
+* 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance
 * 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.
 * 1.0.7 - Add json body support to post update.
 * 1.0.5 - Allow sorting of json lists.

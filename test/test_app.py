@@ -171,9 +171,7 @@ def test_relationships(client):
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
     # add relation
     setting = Setting.query.filter_by(setting_type='test').first()
-    sub_setting = SubSetting(flong='blong', setting=setting)
-    db.session.add(sub_setting)
-    db.session.commit()
+    client.post(f'/sub_setting_add/{setting.id}', data=dict(flong='blong', setting=setting))
     # see if returned
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200

@@ -90,6 +90,18 @@ def route_setting_update(item_id):
     return 'Updated'
 
 
+@app.route('/sub_setting_add/<int:setting_id>', methods=['POST'])
+def route_sub_setting_add(setting_id):
+    """
+    add as a child using kwargs on request create form
+
+    :param setting_id:
+    :return:
+    """
+    setting = Setting.query.get_or_404(setting_id)
+    return SubSetting.request_create_form(setting_id=setting.id).as_dict
+
+
 @app.route('/setting_edit/<int:item_id>', methods=['POST'])
 @app.route('/setting_add', methods=['POST'])
 def route_setting_edit_add(item_id=None):
@@ -146,7 +158,7 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
     flong = db.Column(db.String(120), index=True, default='flang')
 
-    update_fields = ['flong']
+    create_fields = update_fields = ['flong']
 
     @staticmethod
     def one_day_ago():

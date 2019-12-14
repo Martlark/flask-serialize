@@ -37,7 +37,7 @@ class FlaskSerializeMixin:
     # cache model properties
     model_props = {}
     # current version
-    version = '1.0.8'
+    version = '1.0.9'
 
     def to_date_short(self, d):
         """
@@ -221,18 +221,18 @@ class FlaskSerializeMixin:
             self.model_props[self.__table__] = props
 
         for c in props.field_list:
-                try:
-                    d[c.name] = v = getattr(self, c.name, '')
-                except Exception as e:
-                    v = str(e)
+            try:
+                d[c.name] = v = getattr(self, c.name, '')
+            except Exception as e:
+                v = str(e)
 
-                if v is None:
-                    d[c.name] = ''
-                elif c.converter:
-                    try:
-                        d[c.name] = c.converter(v)
-                    except Exception as e:
-                        d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
+            if v is None:
+                d[c.name] = ''
+            elif c.converter:
+                try:
+                    d[c.name] = c.converter(v)
+                except Exception as e:
+                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
     def __convert_value(self, value):
@@ -269,14 +269,14 @@ class FlaskSerializeMixin:
         return True
 
     @classmethod
-    def request_create_form(cls):
+    def request_create_form(cls, **kwargs):
         """
         create a new item from a form in the current request object
-        throws error if something wrong
+        throws error if something wrong. Use **kwargs to set the object properties of the newly created item.
 
         :return: the new created item
         """
-        new_item = cls()
+        new_item = cls(**kwargs)
         # field_list = cls.__table__.columns
 
         if len(new_item.create_fields or '') == 0:
