@@ -217,12 +217,14 @@ def test_update_create_type_conversion(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     # default bool type conversion
+    # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=False))
     assert rv.status_code == 200
     assert rv.data.decode('utf-8') == 'Updated'
     item = Setting.query.filter_by(key=key).first()
     assert item.active == 'n'
-    rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=True))
+    # query parameters as strings so bool converter does not work
+    rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
     assert rv.data.decode('utf-8') == 'Updated'
     item = Setting.query.filter_by(key=key).first()

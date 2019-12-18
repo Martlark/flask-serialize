@@ -142,7 +142,7 @@ Get all items as a json list.
 
 .. code:: JavaScript
 
-    [{id:1, value: "hello"},{id:2, value: "there"},{id:1, value: "programmer"}]
+    [{id:1, value: "hello"},{id:2, value: "there"},{id:3, value: "programmer"}]
 
 All of: get-all, get, put, post, and delete can be combined in one route.
 
@@ -292,7 +292,7 @@ Example return JSON:
 .. code:: python
 
     class ExampleModel(db.Model, FlaskSerializeMixin):
-        update_fields = ['new_hat_size']
+        update_fields = ['head_size']
 
         @property
         def new_hat_size(self):
@@ -598,12 +598,14 @@ Example:
 
 Update a score item.
 
+/score/6?value=23.4
+
 .. code:: python
 
     @bp.route('/score/<int:score_id>', methods=['PUT'])
     @login_required
     def score(score_id):
-        score = Score.query.get_or_404(score_id
+        score = Score.query.get_or_404(score_id)
         if Score.request_update_form():
             return 'ok'
         else:

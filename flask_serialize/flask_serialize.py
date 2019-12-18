@@ -310,8 +310,9 @@ class FlaskSerializeMixin:
         try:
             json_data = request.get_json(force=True)
         except Exception as e:
-            current_app.logger.exception(e)
             json_data = request.values
+            if len(json_data) == 0:
+                current_app.logger.exception(e)
 
         self.update_from_dict(json_data)
 
@@ -400,7 +401,10 @@ class FlaskSerializeMixin:
 
         if not item:
             if request.method == 'POST':
-                return cls.request_create_form().as_json
+                try:
+                    return cls.request_create_form().as_json
+                except Exception as e:
+                    return {'error': str(e)}
 
             abort(404)
 
@@ -413,8 +417,8 @@ class FlaskSerializeMixin:
             try:
                 item.request_update_form()
             except Exception as e:
-                return jsonify({'error': str(e)})
-            return jsonify(dict(message='Updated', properties=item.return_properties()))
+                return {'error': str(e)}
+            return dict(message='Updated', properties=item.return_properties())
 
         elif request.method == 'DELETE':
             # delete a single item
@@ -423,17 +427,17 @@ class FlaskSerializeMixin:
                 cls.db.session.delete(item)
                 cls.db.session.commit()
             except Exception as e:
-                return jsonify(dict(error=str(e), message=''))
+                return dict(error=str(e), message='')
 
-            return jsonify(dict(error=None, message='Deleted'))
+            return dict(error=None, message='Deleted')
 
         # PUT, save the modified item
         try:
             item.request_update_json()
         except Exception as e:
-            return jsonify(dict(error=str(e), message=''))
+            return dict(error=str(e), message='')
 
-        return jsonify(dict(error=None, message='Updated', properties=item.return_properties()))
+        return dict(error=None, message='Updated', properties=item.return_properties())
 
     @classmethod
     def json_first(cls, **kwargs):
