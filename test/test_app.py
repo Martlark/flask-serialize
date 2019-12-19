@@ -84,35 +84,30 @@ def test_get_filter(client):
     add_setting(client, key=key_2)
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 2
+    assert len(rv.json) == 2
     rv = client.get(f'/setting_get_all?key={key_1}')
-    json_settings = json.loads(rv.data)
-    assert json_settings[0]['key'] == key_1
-    assert len(json_settings) == 1
+    assert rv.json[0]['key'] == key_1
+    assert len(rv.json) == 1
     rv = client.get(f'/setting_get_all?key={key_2}')
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 1
-    assert json_settings[0]['key'] == key_2
+    assert len(rv.json) == 1
+    assert rv.json[0]['key'] == key_2
 
 
 def test_get_all(client):
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
-    assert len(json.loads(rv.data)) == 0
+    assert len(rv.json) == 0
     key = random_string()
     # test add
     item = add_setting(client, key=key)
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 1
-    assert json_settings[0]['key'] == key
+    assert len(rv.json) == 1
+    assert rv.json[0]['key'] == key
     with app.app_context():
         # filter by
         rv = Setting.json_filter_by(key=key)
-        json_settings = json.loads(rv.data)
-        assert json_settings[0]['key'] == key
+        assert rv.json[0]['key'] == key
     # all as dict list
     result = Setting.query.all()
     dict_list = Setting.dict_list(result)
@@ -127,20 +122,17 @@ def test_get_user(client):
     test_user_name = random_string()
     client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value', user=test_user_name))
     rv = client.get('/setting_user/{}'.format(test_user_name))
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 1
-    item = json_settings[0]
+    assert len(rv.json) == 1
+    item = rv.json[0]
     assert item['user'] == test_user_name
     rv = client.get('/setting_id_user/{}/{}'.format(item['id'], test_user_name))
-    item = json.loads(rv.data)
-    assert item['user'] == test_user_name
+    assert rv.json['user'] == test_user_name
     # should not be found
     rv = client.get('/setting_id_user/{}/{}'.format(item['id'], random_string()))
     assert rv.status_code == 404
     # get all by user
     rv = client.get('/setting_user/{}'.format('no-one'))
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 0
+    assert len(rv.json) == 0
     user_404 = None
     try:
         user_404 = Setting.get_by_user_or_404(item_id=item['id'], user='not-here')
@@ -157,12 +149,11 @@ def test_get_property(client):
     setting = Setting.query.filter_by(key=key).first()
     rv = client.get('/setting_get_key/{}'.format(key))
     assert rv.status_code == 200
-    json_settings = json.loads(rv.data)
-    assert json_settings['prop_test'] == 'prop:' + test_value
-    assert json_settings['prop_error'] == 'division by zero'
-    assert json_settings['prop_datetime'] == str(setting.created).split('.')[0]
-    assert json_settings['prop_test_dict'] == {'prop': test_value}
-    assert set(json_settings['prop_set']) == set([3, 1, 2, 'four'])
+    assert rv.json['prop_test'] == 'prop:' + test_value
+    assert rv.json['prop_error'] == 'division by zero'
+    assert rv.json['prop_datetime'] == str(setting.created).split('.')[0]
+    assert rv.json['prop_test_dict'] == {'prop': test_value}
+    assert set(rv.json['prop_set']) == set([3, 1, 2, 'four'])
 
 
 def test_relationships(client):
@@ -175,10 +166,9 @@ def test_relationships(client):
     # see if returned
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
-    json_settings = json.loads(rv.data)
-    assert len(json_settings) == 1
-    assert len(json_settings[0]['sub_settings']) == 1
-    assert json_settings[0]['sub_settings'][0]['flong'] == 'blong'
+    assert len(rv.json) == 1
+    assert len(rv.json[0]['sub_settings']) == 1
+    assert rv.json[0]['sub_settings'][0]['flong'] == 'blong'
 
 
 def test_can_delete(client):
@@ -192,9 +182,7 @@ def test_can_delete(client):
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 200
-    # jsonify(dict(error=str(e), message=''))
-    json_result = json.loads(rv.data)
-    assert json_result['error'] == 'Deletion not allowed.  Magic value!'
+    assert rv.json['error'] == 'Deletion not allowed.  Magic value!'
 
 
 def test_column_conversion(client):
@@ -249,9 +237,8 @@ def test_excluded(client):
     item = Setting.query.filter_by(key=key).first()
     # test non-serialize fields excluded
     rv = client.get('/setting_get/{}'.format(item.id))
-    json_result = json.loads(rv.data)
-    assert 'created' not in json_result
-    assert 'updated' not in json_result
+    assert 'created' not in rv.json
+    assert 'updated' not in rv.json
     assert rv.status_code == 200
     assert 'created' not in item.as_dict
     assert 'updated' in item.as_dict
@@ -262,10 +249,9 @@ def test_get_delete_put_post(client):
     # create using post
     rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 200
-    item_json = json.loads(rv.data)
-    item = Setting.query.get_or_404(item_json['id'])
+    item = Setting.query.get_or_404(rv.json['id'])
     assert item
-    assert item_json['value'] == 'test-value'
+    assert rv.json['value'] == 'test-value'
     assert item.value == 'test-value'
     assert item.number == 0
     # update using post
@@ -287,15 +273,14 @@ def test_get_delete_put_post(client):
     # post fail validation
     rv = client.post('/setting_post/{}'.format(item.id), data=dict(key=''))
     assert rv.status_code == 200
-    json_result = json.loads(rv.data)
-    assert json_result['error'] == 'Missing key'
+    assert rv.json['error'] == 'Missing key'
     # update using put
     new_value = random_string()
     new_number = random.randint(0, 999)
     rv = client.put('/setting_put/{}'.format(item.id),
                     json=dict(setting_type='test', key=key, value=new_value, number=new_number))
     assert rv.status_code == 200
-    assert json.loads(rv.data)['message'] == 'Updated'
+    assert rv.json['message'] == 'Updated'
     assert rv.json['properties']['prop_test'] == 'prop:' + new_value
     item = Setting.query.filter_by(key=key).first()
     assert item
@@ -304,8 +289,11 @@ def test_get_delete_put_post(client):
     # put fail validation
     rv = client.put('/setting_put/{}'.format(item.id), data=dict(key=''))
     assert rv.status_code == 200
-    json_result = json.loads(rv.data)
-    assert json_result['error'] == 'Missing key'
+    assert rv.json['error'] == 'Missing key'
+    # create post fails
+    rv = client.post('/setting_post', data=dict(flong='fling'))
+    assert rv.status_code == 200
+    assert rv.json['error'] == 'Missing key'
 
 
 def test_create_update_json(client):
@@ -425,20 +413,19 @@ def test_json_get(client):
     db.session.commit()
     item = Setting.query.get_or_404(item.id)
     # get by id
-    json_item = json.loads(client.get('/setting_get_json/{}'.format(item.id)).data)
-    assert json_item['value'] == test_value
-    assert json_item['key'] == key
-    assert json_item['setting_type'] == setting_type
+    rv = client.get('/setting_get_json/{}'.format(item.id))
+    assert rv.json['value'] == test_value
+    assert rv.json['key'] == key
+    assert rv.json['setting_type'] == setting_type
     rv = client.get('/setting_get_json/{}'.format(item.id + 100))
     assert rv.status_code == 200
-    json_item = json.loads(rv.data)
-    assert json_item == {}
+    assert rv.json == {}
     # get first
-    json_first_item = json.loads(client.get('/setting_json_first/{}'.format(item.key)).data)
-    assert json_first_item['value'] == test_value
-    assert json_first_item['key'] == key
-    assert json_first_item['setting_type'] == setting_type
-    assert json.loads(client.get('/setting_json_first/{}'.format(random_string())).data) == {}
+    rv = client.get('/setting_json_first/{}'.format(item.key))
+    assert rv.json['value'] == test_value
+    assert rv.json['key'] == key
+    assert rv.json['setting_type'] == setting_type
+    assert client.get('/setting_json_first/{}'.format(random_string())).json == {}
 
 
 def test_get_0_is_not_null(client):
@@ -447,16 +434,14 @@ def test_get_0_is_not_null(client):
     db.session.add(item)
     db.session.commit()
     # should get a list
-    response = client.get('/setting_get_all')
-    assert response.status_code == 200
-    json_items = json.loads(response.data)
-    assert len(json_items) == 1
-    assert json_items[0]['key'] == key
+    rv = client.get('/setting_get_all')
+    assert rv.status_code == 200
+    assert len(rv.json) == 1
+    assert rv.json[0]['key'] == key
     # should get one item not a list
-    response = client.get('/setting_get/0')
-    assert response.status_code == 200
-    json_item = json.loads(response.data)
-    assert json_item['key'] == key
+    rv = client.get('/setting_get/0')
+    assert rv.status_code == 200
+    assert rv.json['key'] == key
 
 
 def test_timestamp_is_updated_and_can_be_overridden(client):

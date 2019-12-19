@@ -449,5 +449,5 @@ class FlaskSerializeMixin:
         """
         item = cls.query.filter_by(**kwargs).first()
         if not item:
-            return jsonify({})
+            return {}
         return item.as_json
