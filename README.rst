@@ -219,6 +219,19 @@ Create or update from a WTF form:
                     form=form
                 )
 
+
+Create a child database object:
+
+As example: add a Stat object to a Survey object using the request_create_form convenience method.  The foreign key
+to the parent Survey is provided as a kwargs parameter to the method.
+
+.. code:: python
+
+        @app.route('/stat/<int:survey_id>', methods=['POST'])
+        def stat_add(survey_id=None):
+            survey = Survey.query.get_or_404(survey_id)
+            return Stat.request_create_form(survey_id=survey.id).as_dict
+
 Options
 =======
 
