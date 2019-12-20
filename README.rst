@@ -627,6 +627,7 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.0 - Suppress silly errors. Improve documentation.
 * 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance
 * 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.
 * 1.0.7 - Add json body support to post update.
