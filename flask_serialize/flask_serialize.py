@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 
 from flask import request, jsonify, abort, current_app
@@ -20,6 +19,8 @@ class FlaskSerializeMixin:
     # order by ascending field
     order_by_field = None
     order_by_field_desc = None
+    # default error code
+    http_error_code = 400
     # list of fields used to set the update date/time
     timestamp_fields = ['updated', 'timestamp']
     # method to be used to timestamp with update_timestamp method
@@ -37,7 +38,7 @@ class FlaskSerializeMixin:
     # cache model properties
     model_props = {}
     # current version
-    version = '1.1.0'
+    version = '1.1.1'
 
     def to_date_short(self, d):
         """
@@ -404,7 +405,7 @@ class FlaskSerializeMixin:
                 try:
                     return cls.request_create_form().as_json
                 except Exception as e:
-                    return {'error': str(e)}
+                    return {'error': str(e)}, cls.http_error_code
 
             abort(404)
 
@@ -427,7 +428,7 @@ class FlaskSerializeMixin:
                 cls.db.session.delete(item)
                 cls.db.session.commit()
             except Exception as e:
-                return dict(error=str(e), message='')
+                return dict(error=str(e), message=''), cls.http_error_code
 
             return dict(error=None, message='Deleted')
 
@@ -435,7 +436,7 @@ class FlaskSerializeMixin:
         try:
             item.request_update_json()
         except Exception as e:
-            return dict(error=str(e), message='')
+            return dict(error=str(e), message=''), cls.http_error_code
 
         return dict(error=None, message='Updated', properties=item.return_properties())
 
