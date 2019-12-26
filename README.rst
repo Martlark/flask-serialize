@@ -460,21 +460,26 @@ Default is:
 Mixin Helper methods and properties
 ===================================
 
-``get_delete_put_post()``
+``get_delete_put_post(item_id, user, prop_filters)``
 
 Put, get, delete, post and get-all magic method handler.
-NOTE: renamed from ``get_delete_put()``.
+
+* `item_id`: the primary key of the item - if none and method is 'GET' returns all items
+* `user`: user to user as query filter.
+* `prop_filters`: dictionary of key:value pairs to limit results when returning get-all.
 
 ====== ==============================================================================================================================
 Method Operation
 ====== ==============================================================================================================================
 GET    returns one item when `item_id` is a primary key
 GET    returns all items when `item_id` is None
-PUT    updates item using `item_id` as the id from request json data
+PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.
 DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error
-POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None
-POST   updates an item from form data using `item_id`. Returns Flask response of {'message':'something', 'error':'any error message'}
+POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify before creating.
+POST   updates an item from form data using `item_id`. Returns json response of {'message':'something', 'error':'any error message'}.  Calls the model verify before updating.
 ====== ==============================================================================================================================
+
+On error returns a json response of {error: 'Message'} with http status code of 400.
 
 Set the `user` parameter to restrict a certain user.  Assumes that a model
 relationship of user exists.
