@@ -169,6 +169,19 @@ def test_relationships(client):
     assert rv.json[0]['sub_settings'][0]['flong'] == 'blong'
 
 
+def test_prop_filters(client):
+    # test add
+    filter_key = random_string()
+    for _ in range(10):
+        client.post('/setting_add', data=dict(setting_type='test', key=random_string(), value=random_string()))
+
+    client.post('/setting_add', data=dict(setting_type='test', key=filter_key, value=random_string()))
+    rv = client.get(f'/setting_get_all?key={filter_key}')
+    assert 200 == rv.status_code
+    assert 1 == len(rv.json)
+    assert filter_key == rv.json[0]['key']
+
+
 def test_can_delete(client):
     # create
     key = random_string()
@@ -304,7 +317,7 @@ def test_create_update_json(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
-    value=random_string()
+    value = random_string()
     rv = client.post(f'/setting_post/{item.id}', json=dict(setting_type='test', key=key, value=value, number=10))
     assert rv.status_code == 200
     item = Setting.query.filter_by(key=key).first()
