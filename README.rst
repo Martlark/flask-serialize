@@ -305,10 +305,10 @@ Example return JSON:
 .. code:: python
 
     class ExampleModel(db.Model, FlaskSerializeMixin):
-        update_fields = ['head_size']
+        update_fields = ['hat_size']
 
         @property
-        def new_hat_size(self):
+        def hat_size(self):
             return self.head_size * self.ear_width
 
 .. code:: JavaScript
