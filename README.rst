@@ -484,17 +484,8 @@ On error returns a json response of {error: 'Message'} with http status code of 
 Set the `user` parameter to restrict a certain user.  Assumes that a model
 relationship of user exists.
 
-.. code:: python
-
-    @property
-    def get_delete_put_post(self, item_id=None, user=None):
-        """
-        get, delete or update with JSON a single model item
-        post for form data
-        :param item_id: the primary key id of the item - if none and method is get returns all items
-        :param user: user to add as query item.
-        :return: json object: {error, message}, or the item.  error == None for correct operation
-        """
+Prop filters is a dictionary of `property name`:`value` pairs.  Ie: {'group': 'admin'} to restrict list to the
+admin group.  Properties or database fields can be used as the property name.
 
 ``as_dict``
 
