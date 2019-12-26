@@ -160,19 +160,18 @@ JQuery example:
 .. code:: javascript
 
     function put(setting_id) {
-        return $.ajax({
-            url: `/update_setting/${setting_id}`,
-            method: 'PUT',
-            contentType: "application/json",
-            data: {setting_type:"x",value:"100"},
-        }).then(response => {
-            if( response.error ){
-                alert("Error:"+response.error);
-            }
-            else {
+        try {
+            return $.ajax({
+                url: `/update_setting/${setting_id}`,
+                method: 'PUT',
+                contentType: "application/json",
+                data: {setting_type:"x",value:"100"},
+            }).then(response => {
                 alert("OK:"+response.message);
-            }
-        });
+            });
+        } catch (e) {
+            alert(`Error updating ${e.message}`);
+        }
     }
 
 Flask route:  
@@ -479,7 +478,7 @@ POST   creates and returns a Flask response with a new item as json from form bo
 POST   updates an item from form data using `item_id`. Returns json response of {'message':'something', 'error':'any error message'}.  Calls the model verify before updating.
 ====== ==============================================================================================================================
 
-On error returns a json response of {error: 'Message'} with http status code of 400.
+On error returns a response of 'error message' with http status code of 400.
 
 Set the `user` parameter to restrict a certain user.  Assumes that a model
 relationship of user exists.
@@ -623,7 +622,7 @@ Update a score item.
 Release Notes
 -------------
 
-* 1.1.1 - Add 400 http status code for json errors.  Improve documentation.
+* 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.
 * 1.1.0 - Suppress silly errors. Improve documentation.
 * 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance
 * 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.

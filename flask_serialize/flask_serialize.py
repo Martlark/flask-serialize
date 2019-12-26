@@ -38,7 +38,7 @@ class FlaskSerializeMixin:
     # cache model properties
     model_props = {}
     # current version
-    version = '1.1.1'
+    version = '1.1.2'
 
     def to_date_short(self, d):
         """
@@ -405,7 +405,7 @@ class FlaskSerializeMixin:
                 try:
                     return cls.request_create_form().as_json
                 except Exception as e:
-                    return {'error': str(e)}, cls.http_error_code
+                    return str(e), cls.http_error_code
 
             abort(404)
 
@@ -418,7 +418,7 @@ class FlaskSerializeMixin:
             try:
                 item.request_update_form()
             except Exception as e:
-                return {'error': str(e)}
+                return str(e), cls.http_error_code
             return dict(message='Updated', properties=item.return_properties())
 
         elif request.method == 'DELETE':
@@ -428,7 +428,7 @@ class FlaskSerializeMixin:
                 cls.db.session.delete(item)
                 cls.db.session.commit()
             except Exception as e:
-                return dict(error=str(e), message=''), cls.http_error_code
+                return str(e), cls.http_error_code
 
             return dict(error=None, message='Deleted')
 
@@ -436,7 +436,7 @@ class FlaskSerializeMixin:
         try:
             item.request_update_json()
         except Exception as e:
-            return dict(error=str(e), message=''), cls.http_error_code
+            return str(e), cls.http_error_code
 
         return dict(error=None, message='Updated', properties=item.return_properties())
 

@@ -1,10 +1,8 @@
-import json
 import random
 import string
 import time
 
 import pytest
-from datetime import datetime
 
 from test.test_flask_app import app, db, Setting, SubSetting
 
@@ -182,7 +180,7 @@ def test_can_delete(client):
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 400
-    assert rv.json['error'] == 'Deletion not allowed.  Magic value!'
+    assert rv.data == b'Deletion not allowed.  Magic value!'
 
 
 def test_column_conversion(client):
@@ -208,13 +206,13 @@ def test_update_create_type_conversion(client):
     # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=False))
     assert rv.status_code == 200
-    assert rv.data.decode('utf-8') == 'Updated'
+    assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
     assert item.active == 'n'
     # query parameters as strings so bool converter does not work
     rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
-    assert rv.data.decode('utf-8') == 'Updated'
+    assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
     assert item.active == 'y'
     # add conversion type
@@ -223,7 +221,7 @@ def test_update_create_type_conversion(client):
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(number=100))
     Setting.convert_types = old_convert_type
     assert rv.status_code == 200
-    assert rv.data.decode('utf-8') == 'Updated'
+    assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
     assert item.number == 200
 
@@ -272,8 +270,8 @@ def test_get_delete_put_post(client):
     assert rv.status_code == 404
     # post fail validation
     rv = client.post('/setting_post/{}'.format(item.id), data=dict(key=''))
-    assert rv.status_code == 200
-    assert rv.json['error'] == 'Missing key'
+    assert rv.status_code == 400
+    assert rv.data == b'Missing key'
     # update using put
     new_value = random_string()
     new_number = random.randint(0, 999)
@@ -288,12 +286,13 @@ def test_get_delete_put_post(client):
     assert item.number == new_number
     # put fail validation
     rv = client.put('/setting_put/{}'.format(item.id), data=dict(key=''))
+    print(rv)
     assert rv.status_code == 400
-    assert rv.json['error'] == 'Missing key'
+    assert rv.data == b'Missing key'
     # create post fails
     rv = client.post('/setting_post', data=dict(flong='fling'))
     assert rv.status_code == 400
-    assert rv.json['error'] == 'Missing key'
+    assert rv.data == b'Missing key'
 
 
 def test_create_update_json(client):
@@ -348,7 +347,7 @@ def test_create_update_delete(client):
     rv = client.post('/setting_edit/{}'.format(item.id),
                      data=dict(key=''))
     assert rv.status_code == 500
-    assert rv.data.decode('utf-8') == 'Error updating item: Missing key'
+    assert rv.data == b'Error updating item: Missing key'
     # delete
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 200
@@ -364,7 +363,7 @@ def test_raise_error_for_create_fields(client):
     Setting.create_fields = []
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
     assert rv.status_code == 500
-    assert rv.data.decode('utf-8') == 'Error creating item: create_fields is empty'
+    assert rv.data == b'Error creating item: create_fields is empty'
     Setting.create_fields = old_create_fields
 
 
@@ -379,11 +378,11 @@ def test_raise_error_for_update_fields(client):
     # form
     rv = client.post('/setting_edit/{}'.format(item.id), data=dict(setting_type='test', key=key, value='test-value'))
     assert rv.status_code == 500
-    assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
+    assert rv.data == b'Error updating item: update_fields is empty'
     # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(setting_type='test', key=key, value='test-value'))
     assert rv.status_code == 500
-    assert rv.data.decode('utf-8') == 'Error updating item: update_fields is empty'
+    assert rv.data == b'Error updating item: update_fields is empty'
     Setting.update_fields = old_fields
 
 
