@@ -181,7 +181,7 @@ def test_can_delete(client):
     assert item
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
-    assert rv.status_code == 200
+    assert rv.status_code == 400
     assert rv.json['error'] == 'Deletion not allowed.  Magic value!'
 
 
@@ -288,11 +288,11 @@ def test_get_delete_put_post(client):
     assert item.number == new_number
     # put fail validation
     rv = client.put('/setting_put/{}'.format(item.id), data=dict(key=''))
-    assert rv.status_code == 200
+    assert rv.status_code == 400
     assert rv.json['error'] == 'Missing key'
     # create post fails
     rv = client.post('/setting_post', data=dict(flong='fling'))
-    assert rv.status_code == 200
+    assert rv.status_code == 400
     assert rv.json['error'] == 'Missing key'
 
 
