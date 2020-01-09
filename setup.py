@@ -15,7 +15,7 @@
 from codecs import open
 from setuptools import setup
 
-VERSION = '1.1.2'
+VERSION = '1.1.3'
 LONG_DESCRIPTION = open('README.rst', 'r', encoding='utf-8').read()
 
 setup(
@@ -40,6 +40,7 @@ setup(
 
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Libraries :: Python Modules',
+        'Framework :: Flask',
 
         'License :: OSI Approved :: Apache Software License',
 

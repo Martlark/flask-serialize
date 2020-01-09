@@ -364,6 +364,7 @@ def test_create_update_delete(client):
     # delete
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 200
+    assert rv.json['item']['id'] == item.id
     item = Setting.query.filter_by(key=key).first()
     assert not item
 
