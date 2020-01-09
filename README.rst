@@ -282,7 +282,8 @@ Updating fields specification
 -----------------------------
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
-admin fields such as login_counts or security fields are excluded.
+admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
+keys here.
 
 .. code:: python
 
@@ -321,7 +322,8 @@ interesting things from updates
 Creation fields used when creating specification
 ------------------------------------------------
 
-List of model fields to be read from a form when creating an object.
+List of model fields to be read from a form or json when creating an object.  Do not put foreign keys or primary
+keys here.
 
 .. code:: python
 
@@ -470,12 +472,12 @@ Put, get, delete, post and get-all magic method handler.
 ====== ==============================================================================================================================
 Method Operation
 ====== ==============================================================================================================================
-GET    returns one item when `item_id` is a primary key
-GET    returns all items when `item_id` is None
+GET    returns one item when `item_id` is a primary key.
+GET    returns all items when `item_id` is None.
 PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.
-DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error
-POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify before creating.
-POST   updates an item from form data using `item_id`. Returns json response of {'message':'something', 'error':'any error message'}.  Calls the model verify before updating.
+DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error. Returns the item removed.
+POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify method before creating.
+POST   updates an item from form data using `item_id`. Returns json response of {'message':'something'}.  Calls the model verify method before updating.
 ====== ==============================================================================================================================
 
 On error returns a response of 'error message' with http status code of 400.
@@ -622,6 +624,7 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 * 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.
 * 1.1.0 - Suppress silly errors. Improve documentation.
 * 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance

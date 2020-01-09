@@ -38,7 +38,7 @@ class FlaskSerializeMixin:
     # cache model properties
     model_props = {}
     # current version
-    version = '1.1.2'
+    version = '1.1.3'
 
     def to_date_short(self, d):
         """
@@ -260,7 +260,7 @@ class FlaskSerializeMixin:
         :return: True when complete
         """
         if request.content_type == 'application/json':
-            self.request_update_json()
+            return self.request_update_json()
         else:
             self.update_from_dict(request.form)
         self.verify()
@@ -287,12 +287,14 @@ class FlaskSerializeMixin:
             json_data = request.get_json(force=True)
             if len(json_data) > 0:
                 for field in cls.create_fields:
-                    value = json_data.get(field)
-                    setattr(new_item, field, new_item.__convert_value(value))
+                    if field in json_data:
+                        value = json_data.get(field)
+                        setattr(new_item, field, new_item.__convert_value(value))
         except:
             for field in cls.create_fields:
-                value = request.form.get(field)
-                setattr(new_item, field, new_item.__convert_value(value))
+                if field in request.form:
+                    value = request.form.get(field)
+                    setattr(new_item, field, new_item.__convert_value(value))
 
         new_item.verify(create=True)
         new_item.update_timestamp()
@@ -385,7 +387,7 @@ class FlaskSerializeMixin:
         :param item_id: the primary key of the item - if none and method is 'GET' returns all items
         :param user: user to user as query filter.
         :param prop_filters: dictionary of key:value pairs to limit results to.
-        :return: json object: {error, message}, or the item.  error == None for correct operation
+        :return: json object: {message}, or the item.  throws error when problem
         """
         item = None
         if user is not None and item_id is not None:
@@ -430,7 +432,7 @@ class FlaskSerializeMixin:
             except Exception as e:
                 return str(e), cls.http_error_code
 
-            return dict(error=None, message='Deleted')
+            return dict(item=item.as_dict, message='Deleted')
 
         # PUT, save the modified item
         try:
@@ -438,7 +440,7 @@ class FlaskSerializeMixin:
         except Exception as e:
             return str(e), cls.http_error_code
 
-        return dict(error=None, message='Updated', properties=item.return_properties())
+        return dict(message='Updated', properties=item.return_properties())
 
     @classmethod
     def json_first(cls, **kwargs):
