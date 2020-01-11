@@ -160,7 +160,6 @@ JQuery example:
 .. code:: javascript
 
     function put(setting_id) {
-        try {
             return $.ajax({
                 url: `/update_setting/${setting_id}`,
                 method: 'PUT',
@@ -168,9 +167,9 @@ JQuery example:
                 data: {setting_type:"x",value:"100"},
             }).then(response => {
                 alert("OK:"+response.message);
+            }).fail((xhr, textStatus, errorThrown) => {
+                alert(`Error: ${xhr.responseText}`);
             });
-        } catch (e) {
-            alert(`Error updating ${e.message}`);
         }
     }
 
