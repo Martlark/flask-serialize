@@ -26,6 +26,11 @@ class EditForm(FlaskForm):
     number = IntegerField('number')
 
 
+@app.route('/')
+def page_index():
+    return '<h1>Hello</h1>'
+
+
 # Get all items as a json list.
 # post, put update
 # and get single
@@ -62,6 +67,7 @@ def route_setting_json_first(key):
 def route_setting_get_key(key):
     """
     get the first item that matches by a setting key
+
     :param key:
     :return:
     """
@@ -79,6 +85,7 @@ def route_setting_delete(item_id):
 def route_setting_update(item_id):
     """
     update from a json object
+
     :param item_id: item to update
     :return:
     """
@@ -102,7 +109,7 @@ def route_sub_setting_add(setting_id):
     return SubSetting.request_create_form(setting_id=setting.id).as_dict
 
 
-@app.route('/setting_edit/<int:item_id>', methods=['POST'])
+@app.route('/setting_edit/<int:item_id>', methods=['POST', 'GET'])
 @app.route('/setting_add', methods=['POST'])
 def route_setting_edit_add(item_id=None):
     if item_id:
@@ -167,6 +174,7 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     def to_date_short(self, date_value):
         """
         override DATETIME conversion behaviour to return unix time
+
         :param date_value:
         :return:
         """

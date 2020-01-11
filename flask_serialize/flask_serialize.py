@@ -30,13 +30,13 @@ class FlaskSerializeMixin:
     # add your own converters here
     column_type_converters = {}
     # add or replace conversion types
-    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}, {'type': int, 'method': int}]
     # properties or fields to return when updating using get or post
     update_properties = []
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
-    model_props = {}
+    __model_props = {}
     # current version
     version = '1.1.3'
 
@@ -140,11 +140,11 @@ class FlaskSerializeMixin:
         return jsonify(self.__as_exclude_json_dict())
 
     def clear_cache(self):
-        self.model_props = {}
+        self.__model_props = {}
 
     def set_column_type_converter(self, col_type, method):
         self.column_type_converters[col_type] = method
-        self.model_props = {}
+        self.__model_props = {}
 
     def __as_exclude_json_dict(self):
         """
@@ -195,7 +195,7 @@ class FlaskSerializeMixin:
         # built in converters
         # can be replaced dynamically using column_type_converters
         d = {}
-        props = self.model_props.get(self.__table__)
+        props = self.__model_props.get(self.__table__)
         if not props:
             props = EasyDict()
             props.converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
@@ -219,7 +219,7 @@ class FlaskSerializeMixin:
                     f.converter = props.converters.get(f.c_type)
                     props.field_list.append(f)
 
-            self.model_props[self.__table__] = props
+            self.__model_props[self.__table__] = props
 
         for c in props.field_list:
             try:
@@ -236,10 +236,37 @@ class FlaskSerializeMixin:
                     d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
-    def __convert_value(self, value):
+    def __get_update_field_type(self, field, value):
+        """
+        get the type of the update to db field from cached table properties
+
+        :param field:
+        :return: class of the type
+        """
+        props = self.__model_props.get(self.__table__)
+        if props:
+            for f in props.field_list:
+                if f.name == field:
+                    if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT") :
+                        return str
+                    if f.c_type.startswith("INTEGER"):
+                        print('int', field, value)
+                        return int
+                    if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL"):
+                        return float
+                    if f.c_type.startswith("DATE") or f.c_type.startswith("TIME") :
+                        return datetime
+                    if f.c_type.startswith("BOOLEAN"):
+                        return datetime
+
+        return None
+
+    def __convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
         override built in conversions by setting the value of convert_types. ie:
+        first uses bare value to determine type and then
+        uses db derived values
         convert_types = [{'type':bool, 'method': lambda x: not x}]
 
         :param value:
@@ -249,6 +276,13 @@ class FlaskSerializeMixin:
             if isinstance(value, t['type']):
                 value = t['method'](value)
                 return value
+
+        instance_type = self.__get_update_field_type(name, value)
+        if instance_type:
+            for t in self.convert_types:
+                if isinstance(instance_type, t['type']):
+                    value = t['method'](value)
+                    return value
         return value
 
     def request_update_form(self):
@@ -289,12 +323,12 @@ class FlaskSerializeMixin:
                 for field in cls.create_fields:
                     if field in json_data:
                         value = json_data.get(field)
-                        setattr(new_item, field, new_item.__convert_value(value))
+                        setattr(new_item, field, new_item.__convert_value(field, value))
         except:
             for field in cls.create_fields:
                 if field in request.form:
                     value = request.form.get(field)
-                    setattr(new_item, field, new_item.__convert_value(value))
+                    setattr(new_item, field, new_item.__convert_value(field, value))
 
         new_item.verify(create=True)
         new_item.update_timestamp()
@@ -345,7 +379,7 @@ class FlaskSerializeMixin:
 
         for field in self.update_fields:
             if field in data_dict:
-                setattr(self, field, self.__convert_value(data_dict[field]))
+                setattr(self, field, self.__convert_value(field, data_dict[field]))
 
     def can_delete(self):
         """

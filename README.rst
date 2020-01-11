@@ -624,12 +624,13 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.4 - Fix doco typos.
 * 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 * 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.
 * 1.1.0 - Suppress silly errors. Improve documentation.
-* 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance
-* 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.
-* 1.0.7 - Add json body support to post update.
+* 1.0.9 - Add kwargs to request_create_form to pass Object props to be used when creating the Object instance
+* 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use.  It is no longer possible to alter model definitions dynamically.
+* 1.0.7 - Add json request body support to post update.
 * 1.0.5 - Allow sorting of json lists.
 
 Licensing

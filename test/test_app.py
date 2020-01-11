@@ -219,9 +219,9 @@ def test_update_create_type_conversion(client):
     # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=False))
     assert rv.status_code == 200
-    assert rv.data == b'Updated'
+    assert b'Updated' == rv.data
     item = Setting.query.filter_by(key=key).first()
-    assert item.active == 'n'
+    assert 'n' == item.active
     # query parameters as strings so bool converter does not work
     rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
@@ -230,7 +230,7 @@ def test_update_create_type_conversion(client):
     assert item.active == 'y'
     # add conversion type
     old_convert_type = Setting.convert_types
-    Setting.convert_types = [{'type': int, 'method': lambda n: n * 2}]
+    Setting.convert_types = [{'type': int, 'method': lambda n: int(n) * 2}]
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(number=100))
     Setting.convert_types = old_convert_type
     assert rv.status_code == 200
@@ -420,7 +420,7 @@ def test_json_get(client):
     test_value = random_string()
     setting_type = random_string()
     # test add setting
-    Setting.model_props = {}
+    Setting.__model_props = {}
     item = Setting(setting_type=setting_type, key=key, value=test_value)
     db.session.add(item)
     db.session.commit()
