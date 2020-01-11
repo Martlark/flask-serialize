@@ -113,7 +113,7 @@ Put an update to a single item as json.
 
 .. code:: JavaScript
 
-    {error:"any error message", message: "success message"}
+    {message: "success message"}
 
 
 Delete a single item.
@@ -124,11 +124,11 @@ Delete a single item.
     def delete_setting( item_id ):
         return Setting.get_delete_put_post(item_id)
 
-    Returns a Flask response with the result as a json object:
+    Returns a Flask response with the result and item deleted as a json response:
 
 .. code:: JavaScript
 
-    {error:"any error message", message: "success message"}
+    {message: "success message", item: {"id":5, name: "gone"}}
 
 Get all items as a json list.
 
@@ -444,8 +444,8 @@ override the ``to_date_short`` method of the mixin.  Example:
             return int(time.mktime(date_value.timetuple())) * 1000
 
 
-Conversion types (to database) add or replace update/create
------------------------------------------------------------
+Conversion types when writing to database during update and create
+------------------------------------------------------------------
 
 Add or replace to db conversion methods by using a list of dicts that specify conversions.
 
@@ -457,6 +457,10 @@ Default is:
 
 * type: a python object type  
 * method: a lambda or method to provide the conversion to a database acceptable value.
+
+First the correct conversion will be attempted to be determined from the value of the updated or
+new field value.  Then, if a fetch request from the database has already been made, an
+introspection from the destination column type will be used to get the correct value converter.
 
 Mixin Helper methods and properties
 ===================================

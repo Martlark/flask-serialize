@@ -30,7 +30,7 @@ class FlaskSerializeMixin:
     # add your own converters here
     column_type_converters = {}
     # add or replace conversion types
-    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}, {'type': int, 'method': int}]
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # properties or fields to return when updating using get or post
     update_properties = []
     # db is required to be set for updating/deletion functions
@@ -250,7 +250,6 @@ class FlaskSerializeMixin:
                     if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT") :
                         return str
                     if f.c_type.startswith("INTEGER"):
-                        print('int', field, value)
                         return int
                     if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL"):
                         return float
