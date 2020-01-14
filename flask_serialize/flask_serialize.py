@@ -139,13 +139,6 @@ class FlaskSerializeMixin:
         """
         return jsonify(self.__as_exclude_json_dict())
 
-    def clear_cache(self):
-        self.__model_props = {}
-
-    def set_column_type_converter(self, col_type, method):
-        self.column_type_converters[col_type] = method
-        self.__model_props = {}
-
     def __as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
@@ -279,7 +272,7 @@ class FlaskSerializeMixin:
         instance_type = self.__get_update_field_type(name, value)
         if instance_type:
             for t in self.convert_types:
-                if isinstance(instance_type, t['type']):
+                if instance_type == t['type']:
                     value = t['method'](value)
                     return value
         return value

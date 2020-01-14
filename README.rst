@@ -220,8 +220,8 @@ Create or update from a WTF form:
 
 Create a child database object:
 
-As example: add a Stat object to a Survey object using the request_create_form convenience method.  The foreign key
-to the parent Survey is provided as a kwargs parameter to the method.
+As example: add a `Stat` object to a Survey object using the `request_create_form` convenience method.  The foreign key
+to the parent `Survey` is provided as a `kwargs` parameter to the method.
 
 .. code:: python
 
@@ -460,6 +460,9 @@ Default is:
 First the correct conversion will be attempted to be determined from the value of the updated or
 new field value.  Then, if a fetch request from the database has already been made, an
 introspection from the destination column type will be used to get the correct value converter.
+
+NOTE: The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
+boolean appears in the list before any int convert type.
 
 Mixin Helper methods and properties
 ===================================

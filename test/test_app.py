@@ -1,6 +1,7 @@
 import random
 import string
 import time
+from datetime import datetime
 
 import pytest
 
@@ -228,15 +229,30 @@ def test_update_create_type_conversion(client):
     assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
     assert item.active == 'y'
+
+
+def test_covert_type(client):
     # add conversion type
-    old_convert_type = Setting.convert_types
-    Setting.convert_types = [{'type': int, 'method': lambda n: int(n) * 2}]
-    rv = client.put('/setting_update/{}'.format(item.id), json=dict(number=100))
-    Setting.convert_types = old_convert_type
+    key = random_string()
+    value = random_string()
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, floaty=123.456))
+    item = Setting.query.filter_by(key=key).first()
+    float_value_to_convert = 23.4
+    int_value_to_convert = 45
+    convert_multiple = 2
+    # old_convert_type = Setting.convert_types
+    # Setting.convert_types = [{'type': int, 'method': lambda n: int(n) * 2},
+    #                          {'type': float, 'method': lambda n: float(n) * 2}]
+    rv = client.put('/setting_update/{}'.format(item.id),
+                    json=dict(number=int_value_to_convert, floaty=float_value_to_convert))
+    # Setting.convert_types = old_convert_type
     assert rv.status_code == 200
     assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
-    assert item.number == 200
+    # explicit double conversion type
+    assert int_value_to_convert * convert_multiple == item.number
+    # introspection conversion type
+    assert float_value_to_convert * convert_multiple == item.floaty
 
 
 def test_excluded(client):
@@ -276,7 +292,7 @@ def test_get_delete_put_post(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == new_value
-    assert item.number == 10
+    assert 20 == item.number
     # post item not found
     rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
                      data=dict(setting_type='test', key=key, value='new-value', number=10))
@@ -296,7 +312,7 @@ def test_get_delete_put_post(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == new_value
-    assert item.number == new_number
+    assert item.number == new_number * 2
     # put fail validation
     rv = client.put('/setting_put/{}'.format(item.id), data=dict(key=''))
     print(rv)
@@ -318,11 +334,15 @@ def test_create_update_json(client):
     assert item
     assert item.value == value
     value = random_string()
-    rv = client.post(f'/setting_post/{item.id}', json=dict(setting_type='test', key=key, value=value, number=10))
+    dt_now = datetime.utcnow()
+    rv = client.post(f'/setting_post/{item.id}',
+                     json=dict(setting_type='test', key=key, value=value, number=10,
+                               scheduled=dt_now.strftime(Setting.scheduled_date_format)))
     assert rv.status_code == 200
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
+    assert item.scheduled.strftime(Setting.scheduled_date_format) == dt_now.strftime(Setting.scheduled_date_format)
 
 
 def test_create_update_delete(client):
@@ -346,7 +366,7 @@ def test_create_update_delete(client):
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == 'yet-another-value'
-    assert item.number == 100
+    assert item.number == 200
     # check updated is changing
     assert old_updated != item.updated
     # set to ''
@@ -398,6 +418,9 @@ def test_raise_error_for_update_fields(client):
     assert rv.status_code == 500
     assert rv.data == b'Error updating item: update_fields is empty'
     Setting.update_fields = old_fields
+    # item
+    rv = client.put('/sub_setting_put')
+    assert rv.status_code == 404
 
 
 def test_override_datetime_conversion(client):

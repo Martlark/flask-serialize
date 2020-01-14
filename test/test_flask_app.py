@@ -48,6 +48,11 @@ def route_setting_get_delete_put_post(item_id=None, user=None):
     return Setting.get_delete_put_post(item_id, user)
 
 
+@app.route('/sub_setting_put', methods=['PUT'])
+def route_sub_setting_put_404(item_id=None, user=None):
+    return SubSetting.get_delete_put_post(item_id, user)
+
+
 @app.route('/sub_setting_put/<int:item_id>', methods=['PUT'])
 def route_sub_setting_get_delete_put_post(item_id=None, user=None):
     return SubSetting.get_delete_put_post(item_id, user)
@@ -197,7 +202,9 @@ class Setting(FlaskSerializeMixin, db.Model):
     active = db.Column(db.String(1), default='y')
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
+    scheduled = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(10), default='Andrew')
+    floaty = db.Column(db.Float(), default=1.1)
     # converter fields
     splitter = db.Column(db.String(122), index=True)
     zero = db.Column(db.String(123), default='10')
@@ -205,15 +212,24 @@ class Setting(FlaskSerializeMixin, db.Model):
     sub_settings = db.relationship('SubSetting', backref='setting')
 
     # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter']
+    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter', 'floaty']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
     update_properties = ['prop_test']
     order_by_field = 'value'
+    # column splitter
     column_type_converters = {'VARCHAR(122)': lambda v: ','.join(str(v).split('.'))}
+    # column zero
     column_type_converters['VARCHAR(123)'] = lambda v: int(v) / 0
+    # convert types
+    scheduled_date_format = "%Y-%m-%d %H:%M:%S"
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'},
+                     {'type': int, 'method': lambda n: int(n) * 2},
+                     {'type': float, 'method': lambda n: float(n) * 2},
+                     {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
+                     ]
 
     # checks if Flask-Serialize can delete
     def can_delete(self):
