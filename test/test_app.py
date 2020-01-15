@@ -187,13 +187,14 @@ def test_can_delete(client):
     # create
     key = random_string()
     value = '1234'
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, boolean=False))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 400
+    assert rv.boolean == False
     assert rv.data == b'Deletion not allowed.  Magic value!'
 
 

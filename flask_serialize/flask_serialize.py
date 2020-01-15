@@ -249,7 +249,7 @@ class FlaskSerializeMixin:
                     if f.c_type.startswith("DATE") or f.c_type.startswith("TIME") :
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
-                        return datetime
+                        return bool
 
         return None
 

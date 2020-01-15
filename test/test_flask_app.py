@@ -200,6 +200,7 @@ class Setting(FlaskSerializeMixin, db.Model):
     value = db.Column(db.String(3000), default='')
     number = db.Column(db.Integer, default=0)
     active = db.Column(db.String(1), default='y')
+    boolean = db.Column(db.Boolean)
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
     scheduled = db.Column(db.DateTime, default=datetime.utcnow)
