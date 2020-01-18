@@ -173,21 +173,12 @@ class FlaskSerializeMixin:
         """
         return [item.as_dict for item in relationships]
 
-    @property
-    def as_dict(self):
+    def __get_props(self):
         """
-        convert a sql alchemy query result item to dict
-        override these properties to control the result:
+        get the properties for this table to be used for introspection
 
-        * relationship_fields - follow relationships listed
-        * exclude_serialize_fields - exclude listed fields from serialization
-        * column_type_converters - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
-        :return {dictionary} the item as a dict
+        :return: properties EasyDict
         """
-
-        # built in converters
-        # can be replaced dynamically using column_type_converters
-        d = {}
         props = self.__model_props.get(self.__table__)
         if not props:
             props = EasyDict()
@@ -213,6 +204,24 @@ class FlaskSerializeMixin:
                     props.field_list.append(f)
 
             self.__model_props[self.__table__] = props
+        return props
+
+    @property
+    def as_dict(self):
+        """
+        convert a sql alchemy query result item to dict
+        override these properties to control the result:
+
+        * relationship_fields - follow relationships listed
+        * exclude_serialize_fields - exclude listed fields from serialization
+        * column_type_converters - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
+        :return {dictionary} the item as a dict
+        """
+
+        # built in converters
+        # can be replaced dynamically using column_type_converters
+        d = {}
+        props = self.__get_props()
 
         for c in props.field_list:
             try:
@@ -236,17 +245,17 @@ class FlaskSerializeMixin:
         :param field:
         :return: class of the type
         """
-        props = self.__model_props.get(self.__table__)
+        props = self.__get_props()
         if props:
             for f in props.field_list:
                 if f.name == field:
-                    if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT") :
+                    if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT"):
                         return str
                     if f.c_type.startswith("INTEGER"):
                         return int
                     if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL"):
                         return float
-                    if f.c_type.startswith("DATE") or f.c_type.startswith("TIME") :
+                    if f.c_type.startswith("DATE") or f.c_type.startswith("TIME"):
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
                         return bool

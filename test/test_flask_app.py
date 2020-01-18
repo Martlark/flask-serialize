@@ -1,8 +1,10 @@
+import os
 import time
 from datetime import datetime, timedelta
 
-from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, redirect, url_for, render_template_string, abort, Response, request
+from flask_sqlalchemy import SQLAlchemy
+
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
 
@@ -11,7 +13,7 @@ from wtforms import StringField, IntegerField, ValidationError
 app = Flask("test_app")
 app.testing = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///:memory:"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
 db = SQLAlchemy(app)
 
 
@@ -48,12 +50,8 @@ def route_setting_get_delete_put_post(item_id=None, user=None):
     return Setting.get_delete_put_post(item_id, user)
 
 
-@app.route('/sub_setting_put', methods=['PUT'])
-def route_sub_setting_put_404(item_id=None, user=None):
-    return SubSetting.get_delete_put_post(item_id, user)
-
-
 @app.route('/sub_setting_put/<int:item_id>', methods=['PUT'])
+@app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
 def route_sub_setting_get_delete_put_post(item_id=None, user=None):
     return SubSetting.get_delete_put_post(item_id, user)
 
@@ -98,6 +96,7 @@ def route_setting_update(item_id):
     try:
         item.request_update_json()
     except Exception as e:
+        print(e)
         return Response('Error updating item: ' + str(e), 500)
     return 'Updated'
 
@@ -128,6 +127,7 @@ def route_setting_edit_add(item_id=None):
             try:
                 item.request_update_form()
             except Exception as e:
+                print(e)
                 return Response('Error updating item: ' + str(e), 500)
             return redirect(url_for('route_setting_edit_add', item_id=item_id))
         else:
@@ -135,6 +135,7 @@ def route_setting_edit_add(item_id=None):
                 new_item = Setting.request_create_form()
                 return redirect(url_for('route_setting_edit_add', item_id=new_item.id))
             except Exception as e:
+                print(e)
                 return Response('Error creating item: ' + str(e), 500)
 
     for err in form.errors:
@@ -169,8 +170,10 @@ class SubSetting(FlaskSerializeMixin, db.Model):
 
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
     flong = db.Column(db.String(120), index=True, default='flang')
+    boolean = db.Column(db.Boolean, default=True)
 
-    create_fields = update_fields = ['flong']
+    update_properties = create_fields = update_fields = ['flong', 'boolean']
+    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'}, ]
 
     @staticmethod
     def one_day_ago():
@@ -200,7 +203,6 @@ class Setting(FlaskSerializeMixin, db.Model):
     value = db.Column(db.String(3000), default='')
     number = db.Column(db.Integer, default=0)
     active = db.Column(db.String(1), default='y')
-    boolean = db.Column(db.Boolean)
     created = db.Column(db.DateTime, default=datetime.utcnow)
     updated = db.Column(db.DateTime, default=datetime.utcnow)
     scheduled = db.Column(db.DateTime, default=datetime.utcnow)
@@ -226,11 +228,12 @@ class Setting(FlaskSerializeMixin, db.Model):
     column_type_converters['VARCHAR(123)'] = lambda v: int(v) / 0
     # convert types
     scheduled_date_format = "%Y-%m-%d %H:%M:%S"
-    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'},
-                     {'type': int, 'method': lambda n: int(n) * 2},
-                     {'type': float, 'method': lambda n: float(n) * 2},
-                     {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
-                     ]
+    convert_types = [
+        {'type': bool, 'method': lambda v: 'y' if (type(v) == bool and v) or str(v).lower() == 'true' else 'n'},
+        {'type': int, 'method': lambda n: int(n) * 2},
+        {'type': float, 'method': lambda n: float(n) * 2},
+        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
+        ]
 
     # checks if Flask-Serialize can delete
     def can_delete(self):

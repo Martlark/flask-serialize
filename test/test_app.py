@@ -187,14 +187,13 @@ def test_can_delete(client):
     # create
     key = random_string()
     value = '1234'
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, boolean=False))
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 400
-    assert rv.boolean == False
     assert rv.data == b'Deletion not allowed.  Magic value!'
 
 
@@ -228,8 +227,20 @@ def test_update_create_type_conversion(client):
     rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
     assert rv.data == b'Updated'
+
     item = Setting.query.filter_by(key=key).first()
-    assert item.active == 'y'
+    assert 'y' == item.active
+    flong = random_string()
+    rv = client.post('/sub_setting_add/{}'.format(item.id), data=dict(flong=flong))
+    ss_id = rv.json['id']
+    ss = client.get('/sub_setting_get/{}'.format(ss_id))
+    assert ss.json['id'] == ss_id
+    # bool type conversion
+    for new_boolean in [True, False]:
+        rv = client.put('/sub_setting_put/{}'.format(ss_id), json=dict(boolean=new_boolean))
+        assert 200 == rv.status_code, rv
+        ss = SubSetting.query.get_or_404(ss_id)
+        assert new_boolean == ss.boolean
 
 
 def test_covert_type(client):
