@@ -457,12 +457,15 @@ Default is:
 * type: a python object type  
 * method: a lambda or method to provide the conversion to a database acceptable value.
 
-First the correct conversion will be attempted to be determined from the value of the updated or
-new field value.  Then, if a fetch request from the database has already been made, an
-introspection from the destination column type will be used to get the correct value converter.
+First the correct conversion will be attempted to be determined from the type of the updated or
+new field value.  Then, an introspection from the destination column type will be used to get the
+correct value converter type.
 
 NOTE: The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
 boolean appears in the list before any int convert type.
+
+NOTE: To undertake a more specific column conversion use the `verify` method to explicitly set the class instance value.  The
+`verify` method is always called before a create or update to the database.
 
 Mixin Helper methods and properties
 ===================================
