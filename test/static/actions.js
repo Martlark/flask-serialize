@@ -20,6 +20,6 @@ $(".sub-setting-delete").click(data => {
 
 
 $(".random-value").each((index, item) => {
-    $(item).val(Math.random().toString(36).substring(2, 7))ba
+    $(item).val(Math.random().toString(36).substring(2, 7))
 });
 
