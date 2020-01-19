@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{url_for('page_index')}}">Home</a>
+<form method="POST" submit="{{url_for('route_setting_edit_add', item_id=item.id)}}">
+    <label>Key: <input name="key" value="{{item.key}}"></label><br>
+    <label>setting_type: <input name="setting_type" value="{{item.setting_type}}"></label><br>
+    <label>value: <input name="value" value="{{item.value}}"></label><br>
+    <label>number: <input name="number" value="{{item.number}}"></label><br>
+    <input type="submit">
+</form>
+<h3>Sub Settings</h3>
+<table>
+    <thead>
+    <tr>
+        <th>id</a></th>
+        <th>flong</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+
+    {% for s in item.sub_settings %}
+    <tr>
+        <td>{{s.id}}</td>
+        <td>{{s.flong}}</td>
+        <td>
+            <button class="sub-setting-delete" data-id="{{s.id}}">Delete</button>
+        </td>
+    </tr>
+    </tbody>
+    {% endfor %}
+</table>
+<h3>Add New Sub Setting</h3>
+<form method="POST" action="/sub_setting_add/{{item.id}}">
+    <label>Flong: <input name="flong" class="random-value" value="{{flong}}"></label>
+    <input type="submit">
+</form>
+
+{% endblock %}}

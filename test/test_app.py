@@ -232,7 +232,8 @@ def test_update_create_type_conversion(client):
     assert 'y' == item.active
     flong = random_string()
     rv = client.post('/sub_setting_add/{}'.format(item.id), data=dict(flong=flong))
-    ss_id = rv.json['id']
+    item = SubSetting.query.filter_by(flong=flong).first()
+    ss_id = item.id
     ss = client.get('/sub_setting_get/{}'.format(ss_id))
     assert ss.json['id'] == ss_id
     # bool type conversion

@@ -4,6 +4,7 @@ SQLAlchemy
 EasyDict
 pytest
 flask-sqlalchemy
+flask-migrate
 flask-wtf
 setuptools
 wheel

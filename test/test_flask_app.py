@@ -1,9 +1,12 @@
 import os
+import string
 import time
 from datetime import datetime, timedelta
+import random
 
-from flask import Flask, redirect, url_for, render_template_string, abort, Response, request
+from flask import Flask, redirect, url_for, render_template_string, abort, Response, request, render_template, flash
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
@@ -15,11 +18,21 @@ app.testing = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 # =========================
 # TINY TEST FLASK APP
 # =========================
+
+
+def random_string(length=20):
+    """
+    return a <length> long character random string of ascii_letters
+    :param length: {int} number of characters to return
+    :return:
+    """
+    return ''.join(random.sample(string.ascii_letters, length))
 
 class EditForm(FlaskForm):
     setting_type = StringField('setting_type')
@@ -30,7 +43,8 @@ class EditForm(FlaskForm):
 
 @app.route('/')
 def page_index():
-    return '<h1>Hello</h1>'
+    settings = Setting.query.all()
+    return render_template("index.html", title='Flask Serialize Tester', settings=settings, key=random_string(), setting_type=random_string(), value=random_string())
 
 
 # Get all items as a json list.
@@ -45,11 +59,12 @@ def page_index():
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
 def route_setting_get_delete_put_post(item_id=None, user=None):
     key = request.args.get('key')
-    if key:
+    if key and request.method == 'GET':
         return Setting.get_delete_put_post(item_id, prop_filters={"key": key})
     return Setting.get_delete_put_post(item_id, user)
 
 
+@app.route('/sub_setting_delete/<int:item_id>', methods=['DELETE'])
 @app.route('/sub_setting_put/<int:item_id>', methods=['PUT'])
 @app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
 def route_sub_setting_get_delete_put_post(item_id=None, user=None):
@@ -110,7 +125,11 @@ def route_sub_setting_add(setting_id):
     :return:
     """
     setting = Setting.query.get_or_404(setting_id)
-    return SubSetting.request_create_form(setting_id=setting.id).as_dict
+    try:
+        SubSetting.request_create_form(setting_id=setting.id).as_dict
+    except Exception as e:
+        return str(e), 500
+    return redirect(url_for("route_setting_edit_add", item_id=setting_id))
 
 
 @app.route('/setting_edit/<int:item_id>', methods=['POST', 'GET'])
@@ -133,27 +152,15 @@ def route_setting_edit_add(item_id=None):
         else:
             try:
                 new_item = Setting.request_create_form()
-                return redirect(url_for('route_setting_edit_add', item_id=new_item.id))
+                return redirect(url_for('page_index'))
             except Exception as e:
                 print(e)
                 return Response('Error creating item: ' + str(e), 500)
 
     for err in form.errors:
-        print('**form error**', str(err), form.errors[err])
+        flash('**form error**', str(err), form.errors[err])
 
-    return render_template_string(
-        '''
-        <form submit="{{url_for('route_setting_edit_add')}}">
-        <input name="key" value="{{item.key}}">
-        <input name="setting_type" value="{{item.setting_type}}">
-        <input name="value" value="{{item.value}}">
-        <input name="number" value="{{item.number}}">
-        </form>
-        ''',
-        item=item,
-        title='Edit or Create item',
-        form=form
-    )
+    return render_template("setting_edit.html", item=item, title='Edit Setting', form=form)
 
 
 # =========================
@@ -212,7 +219,7 @@ class Setting(FlaskSerializeMixin, db.Model):
     splitter = db.Column(db.String(122), index=True)
     zero = db.Column(db.String(123), default='10')
     # relationships
-    sub_settings = db.relationship('SubSetting', backref='setting')
+    sub_settings = db.relationship('SubSetting', backref='setting', cascade="all, delete-orphan")
 
     # serializer fields
     update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled']
@@ -233,7 +240,7 @@ class Setting(FlaskSerializeMixin, db.Model):
         {'type': int, 'method': lambda n: int(n) * 2},
         {'type': float, 'method': lambda n: float(n) * 2},
         {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
-        ]
+    ]
 
     # checks if Flask-Serialize can delete
     def can_delete(self):

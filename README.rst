@@ -461,11 +461,16 @@ First the correct conversion will be attempted to be determined from the type of
 new field value.  Then, an introspection from the destination column type will be used to get the
 correct value converter type.
 
-NOTE: The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
-boolean appears in the list before any int convert type.
+Notes:
 
-NOTE: To undertake a more specific column conversion use the `verify` method to explicitly set the class instance value.  The
-`verify` method is always called before a create or update to the database.
+* The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
+  boolean appears in the list before any int convert type.
+
+* To undertake a more specific column conversion use the `verify` method to explicitly set the class instance value.  The
+  `verify` method is always called before a create or update to the database.
+
+* When converting values from query strings or form values the type will always be `str`.
+
 
 Mixin Helper methods and properties
 ===================================
