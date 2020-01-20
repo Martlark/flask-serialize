@@ -26,7 +26,7 @@ function serialize(f) {
             let value = $(item).val();
             switch ($(item).attr("type")) {
                 case "checkbox":
-                    value = $(item).prop("checked") ? "true" : "false";
+                    value = $(item).prop("checked");
                     break;
                 default:
                     break;
