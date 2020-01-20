@@ -65,7 +65,7 @@ def route_setting_get_delete_put_post(item_id=None, user=None):
 
 
 @app.route('/sub_setting_delete/<int:item_id>', methods=['DELETE'])
-@app.route('/sub_setting_put/<int:item_id>', methods=['PUT'])
+@app.route('/sub_setting_put/<int:item_id>', methods=['PUT', 'POST'])
 @app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
 def route_sub_setting_get_delete_put_post(item_id=None, user=None):
     return SubSetting.get_delete_put_post(item_id, user)
