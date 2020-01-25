@@ -34,9 +34,14 @@ class FlaskSerializeMixin:
     # properties or fields to return when updating using get or post
     update_properties = []
     # form_page properties
-    form = None # name of the form to use
-    form_route_update = form_route_create = '' # method names for successful redirect
-    form_template = '' # template for editing
+    form = None  # name of the form to use
+    form_route_update = form_route_create = ''  # method names for successful redirect
+    form_template = ''  # template for editing
+    # all these called with .format(cls) or .format(item) as appropriate
+    form_update_format = 'Updated {}'
+    form_create_format = 'Created {}'
+    form_new_title_format = 'New {}'
+    form_update_title_format = 'Edit {}'
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
@@ -511,24 +516,30 @@ class FlaskSerializeMixin:
         :return: templates and redirects as required
         """
         form = cls.form()
-        item = cls.query.get_or_404(item_id) if item_id else dict(id=None)
+        if item_id:
+            item = cls.query.get_or_404(item_id)
+            title = cls.form_update_title_format.format(item)
+        else:
+            title = cls.form_new_title_format.format(cls)
+            item = dict(id=None)
 
         if form.validate_on_submit():
             item_id = request.form.get('id')
-            if item_id:
-                try:
+            try:
+                if item_id:
                     item.request_update_form()
-                    flash('Your changes have been saved.')
+                    msg = cls.form_update_format.format(item)
+                    if msg:
+                        flash(msg)
                     return redirect(url_for(cls.form_route_update, item_id=item_id))
-                except Exception as e:
-                    flash(str(e), category='danger')
-            else:
-                try:
+                else:
                     new_item = cls.request_create_form()
-                    flash('Created.')
+                    msg = cls.form_create_format.format(new_item)
+                    if msg:
+                        flash(msg)
                     return redirect(url_for(cls.form_route_create, item_id=new_item.id))
-                except Exception as e:
-                    flash('Error creating item: ' + str(e), category='danger')
+            except Exception as e:
+                flash(str(e), category='danger')
         elif request.method == 'GET':
             if not item_id:
                 # new blank form
@@ -539,4 +550,4 @@ class FlaskSerializeMixin:
         if form.errors:
             flash(''.join([f'{form[f].label.text}: {"".join(e)} ' for f, e in form.errors.items()]), category='danger')
 
-        return render_template(cls.form_template, item_id=item_id, item=item, form=form)
+        return render_template(cls.form_template, title=title, item_id=item_id, item=item, form=form)

@@ -23,7 +23,7 @@
     {% endfor %}
 </table>
 <h3>Add New</h3>
-<form method="POST" action="/setting_add">
+<form method="POST" action="{{url_for('route_setting_form')}}">
     <label>setting_type: <input name="setting_type" value="{{setting_type}}"></label>
     <label>key: <input name="key" value="{{key}}"></label>
     <label>value: <input name="value" value="{{value}}"></label>

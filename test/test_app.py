@@ -4,7 +4,6 @@ import time
 from datetime import datetime
 
 import pytest
-from flask import url_for
 
 from test.test_flask_app import app, db, Setting, SubSetting, BadModel
 

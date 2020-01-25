@@ -259,9 +259,9 @@ class Setting(FlaskSerializeMixin, db.Model):
     # form_page
     form = EditForm
     form_route_update = 'route_setting_form'
-    form_route_update = 'route_setting_form'
     form_route_create = 'page_index'
     form_template = 'setting_edit.html'
+    form_new_title_format = 'New Setting'
 
     # checks if Flask-Serialize can delete
     def can_delete(self):
@@ -305,6 +305,8 @@ class Setting(FlaskSerializeMixin, db.Model):
         db.session.commit()
         return sub
 
+    def __repr__(self):
+        return 'Setting {}'.format(self.key)
 
 class BadModel(FlaskSerializeMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
