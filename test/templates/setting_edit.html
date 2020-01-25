@@ -2,11 +2,12 @@
 {% block content %}
 <a href="{{url_for('page_index')}}">Home</a>
 <form id="setting-{{item.id}}" name="setting-post" method="POST"
-      submit="{{url_for('route_setting_edit_add', item_id=item.id)}}">
-    <label>Key: <input name="key" value="{{item.key}}"></label><br>
-    <label>setting_type: <input name="setting_type" value="{{item.setting_type}}"></label><br>
-    <label>value: <input name="value" value="{{item.value}}"></label><br>
-    <label>number: <input name="number" value="{{item.number}}"></label><br>
+      submit="{{url_for('route_setting_form', item_id=item.id)}}">
+    <input name="id" type="hidden" value="{{form.id.data}}">
+    {{ render_field(form.key)}}
+    {{ render_field(form.setting_type)}}
+    {{ render_field(form.value)}}
+    {{ render_field(form.number)}}
     <input type="submit">
 </form>
 <h3>Sub Settings</h3>

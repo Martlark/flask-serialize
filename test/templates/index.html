@@ -13,7 +13,7 @@
     <tbody>
     {% for setting in settings %}
     <tr>
-        <td><a href="{{url_for('route_setting_edit_add', item_id=setting.id)}}">{{setting.id}}</a></td>
+        <td><a href="{{url_for('route_setting_form', item_id=setting.id)}}">{{setting.id}}</a></td>
         <td>{{setting.key}}</td>
         <td>{{setting.value}}</td>
         <td>{{setting.number}}</td>

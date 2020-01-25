@@ -11,7 +11,7 @@ from flask_migrate import Migrate
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
 
-from wtforms import StringField, IntegerField, ValidationError
+from wtforms import StringField, IntegerField, ValidationError, validators, HiddenField
 
 app = Flask("test_app")
 app.testing = True
@@ -34,17 +34,21 @@ def random_string(length=20):
     """
     return ''.join(random.sample(string.ascii_letters, length))
 
+
 class EditForm(FlaskForm):
-    setting_type = StringField('setting_type')
+    id = HiddenField('id')
+    setting_type = StringField('setting_type', [validators.DataRequired()])
     key = StringField('key')
     value = StringField('value')
     number = IntegerField('number')
 
 
 @app.route('/')
-def page_index():
+@app.route('/<item_id>')
+def page_index(item_id=None):
     settings = Setting.query.all()
-    return render_template("index.html", title='Flask Serialize Tester', settings=settings, key=random_string(), setting_type=random_string(), value=random_string())
+    return render_template("index.html", title='Flask Serialize Tester', settings=settings, key=random_string(),
+                           setting_type=random_string(), value=random_string())
 
 
 # Get all items as a json list.
@@ -69,6 +73,12 @@ def route_setting_get_delete_put_post(item_id=None, user=None):
 @app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
 def route_sub_setting_get_delete_put_post(item_id=None, user=None):
     return SubSetting.get_delete_put_post(item_id, user)
+
+
+@app.route('/bad_add', methods=['POST'])
+@app.route('/bad_edit/<int:item_id>', methods=['PUT', 'POST'])
+def route_bad_get_delete_put_post(item_id=None, user=None):
+    return BadModel.get_delete_put_post(item_id, user)
 
 
 @app.route('/setting_get_json/<int:item_id>', methods=['GET'])
@@ -126,7 +136,7 @@ def route_sub_setting_add(setting_id):
     """
     setting = Setting.query.get_or_404(setting_id)
     try:
-        SubSetting.request_create_form(setting_id=setting.id).as_dict
+        SubSetting.request_create_form(setting_id=setting.id)
     except Exception as e:
         return str(e), 500
     return redirect(url_for("route_setting_edit_add", item_id=setting_id))
@@ -151,16 +161,21 @@ def route_setting_edit_add(item_id=None):
             return redirect(url_for('route_setting_edit_add', item_id=item_id))
         else:
             try:
-                new_item = Setting.request_create_form()
+                Setting.request_create_form()
                 return redirect(url_for('page_index'))
             except Exception as e:
                 print(e)
                 return Response('Error creating item: ' + str(e), 500)
-
     for err in form.errors:
-        flash('**form error**', str(err), form.errors[err])
+        flash('**form error** {} {}'.format(str(err), form.errors[err]))
 
     return render_template("setting_edit.html", item=item, title='Edit Setting', form=form)
+
+
+@app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
+@app.route('/setting_form_add', methods=['POST'])
+def route_setting_form(item_id=None):
+    return Setting.form_page(item_id)
 
 
 # =========================
@@ -241,6 +256,12 @@ class Setting(FlaskSerializeMixin, db.Model):
         {'type': float, 'method': lambda n: float(n) * 2},
         {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
     ]
+    # form_page
+    form = EditForm
+    form_route_update = 'route_setting_form'
+    form_route_update = 'route_setting_form'
+    form_route_create = 'page_index'
+    form_template = 'setting_edit.html'
 
     # checks if Flask-Serialize can delete
     def can_delete(self):
@@ -251,6 +272,9 @@ class Setting(FlaskSerializeMixin, db.Model):
     def verify(self, create=False):
         if not self.key or len(self.key) < 1:
             raise ValidationError('Missing key')
+
+        if self.value == '666':
+            raise ValidationError('Value is Devils Number')
 
         if not self.setting_type or len(self.setting_type) < 1:
             raise ValidationError('Missing setting type')
@@ -281,8 +305,13 @@ class Setting(FlaskSerializeMixin, db.Model):
         db.session.commit()
         return sub
 
+
+class BadModel(FlaskSerializeMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.String(30), default='')
+
     def __repr__(self):
-        return '<Setting %r=%r %r>' % (self.key, self.setting_type, self.value)
+        return '<BadModel %r>' % (self.value)
 
 
 if __name__ == '__main__':

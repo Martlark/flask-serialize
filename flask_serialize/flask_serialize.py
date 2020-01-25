@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import request, jsonify, abort, current_app
+from flask import request, jsonify, abort, current_app, flash, redirect, url_for, render_template
 from easydict import EasyDict
 
 
@@ -33,6 +33,10 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # properties or fields to return when updating using get or post
     update_properties = []
+    # form_page properties
+    form = None # name of the form to use
+    form_route_update = form_route_create = '' # method names for successful redirect
+    form_template = '' # template for editing
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
@@ -489,3 +493,50 @@ class FlaskSerializeMixin:
         if not item:
             return {}
         return item.as_json
+
+    @classmethod
+    def form_page(cls, item_id=None):
+        """
+        Do all the work for creating and editing items using a template and a wtf form.
+        Prerequisites.
+
+        cls.form = WTFFormClass
+        cls.form_route_create = Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+        cls.form_route_update = Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+        cls.form_template = 'Location of the template file to edit/add'
+
+        WTFFormClass - needs to have a hidden id with the name 'id'
+
+        :param item_id: Item_id if editing, otherwise None
+        :return: templates and redirects as required
+        """
+        form = cls.form()
+        item = cls.query.get_or_404(item_id) if item_id else dict(id=None)
+
+        if form.validate_on_submit():
+            item_id = request.form.get('id')
+            if item_id:
+                try:
+                    item.request_update_form()
+                    flash('Your changes have been saved.')
+                    return redirect(url_for(cls.form_route_update, item_id=item_id))
+                except Exception as e:
+                    flash(str(e), category='danger')
+            else:
+                try:
+                    new_item = cls.request_create_form()
+                    flash('Created.')
+                    return redirect(url_for(cls.form_route_create, item_id=new_item.id))
+                except Exception as e:
+                    flash('Error creating item: ' + str(e), category='danger')
+        elif request.method == 'GET':
+            if not item_id:
+                # new blank form
+                item = cls()
+
+            form = cls.form(obj=item)
+
+        if form.errors:
+            flash(''.join([f'{form[f].label.text}: {"".join(e)} ' for f, e in form.errors.items()]), category='danger')
+
+        return render_template(cls.form_template, item_id=item_id, item=item, form=form)

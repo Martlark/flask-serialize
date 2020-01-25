@@ -4,8 +4,9 @@ import time
 from datetime import datetime
 
 import pytest
+from flask import url_for
 
-from test.test_flask_app import app, db, Setting, SubSetting
+from test.test_flask_app import app, db, Setting, SubSetting, BadModel
 
 
 def random_string(length=20):
@@ -393,13 +394,45 @@ def test_create_update_delete(client):
     rv = client.post('/setting_edit/{}'.format(item.id),
                      data=dict(key=''))
     assert rv.status_code == 500
-    assert rv.data == b'Error updating item: Missing key'
+    assert b'Error updating item: Missing key' in rv.data
     # delete
     rv = client.delete('/setting_delete/{}'.format(item.id))
     assert rv.status_code == 200
     assert rv.json['item']['id'] == item.id
     item = Setting.query.filter_by(key=key).first()
     assert not item
+
+
+def test_form_page(client):
+    # create
+    key = random_string()
+    rv = client.post('/setting_form_add', data=dict(setting_type='test', key=key, value='test-value', number=10))
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == 'test-value'
+    # test that number is not set on creation as it is not included in create_fields
+    assert item.number == 0
+    # set to new value
+    new_value=random_string()
+    rv = client.post('/setting_form_edit/{}'.format(item.id),
+                     data=dict(id=item.id, setting_type='test', key=key, value=new_value, number=100))
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=key).first()
+    assert item
+    assert item.value == new_value
+    assert item.number == 200
+    # set to ''
+    rv = client.post('/setting_form_edit/{}'.format(item.id),
+                     data=dict(id=item.id, setting_type='test', key=key, value=''))
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=key).first_or_404()
+    assert not item.value
+    # fail validation
+    rv = client.post('/setting_form_edit/{}'.format(item.id),
+                     data=dict(id=item.id, setting_type='test', key=''))
+    assert rv.status_code == 200
+    assert b'Missing key' in rv.data
 
 
 def test_raise_error_for_create_fields(client):
@@ -415,25 +448,20 @@ def test_raise_error_for_create_fields(client):
 
 
 def test_raise_error_for_update_fields(client):
-    key = random_string()
+    value = random_string()
     # add
-    old_fields = Setting.update_fields
-    client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
-    item = Setting.query.filter_by(key=key).first()
-    # remove fields
-    Setting.update_fields = []
+    item = BadModel(value=value)
+    db.session.add(item)
+    db.session.commit()
+    item = BadModel.query.filter_by(value=value).first_or_404()
     # form
-    rv = client.post('/setting_edit/{}'.format(item.id), data=dict(setting_type='test', key=key, value='test-value'))
-    assert rv.status_code == 500
-    assert rv.data == b'Error updating item: update_fields is empty'
+    rv = client.post('/bad_edit/{}'.format(item.id), data=dict(value=value))
+    assert 400 == rv.status_code
+    assert b'update_fields is empty' in rv.data
     # json
-    rv = client.put('/setting_update/{}'.format(item.id), json=dict(setting_type='test', key=key, value='test-value'))
-    assert rv.status_code == 500
-    assert rv.data == b'Error updating item: update_fields is empty'
-    Setting.update_fields = old_fields
-    # item
-    rv = client.put('/sub_setting_put')
-    assert rv.status_code == 404
+    rv = client.put('/bad_edit/{}'.format(item.id), json=dict(value=value))
+    assert 400 == rv.status_code
+    assert b'update_fields is empty' in rv.data
 
 
 def test_override_datetime_conversion(client):
