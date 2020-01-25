@@ -508,7 +508,7 @@ class FlaskSerializeMixin:
         cls.form = WTFFormClass
         cls.form_route_create = Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
         cls.form_route_update = Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
-        cls.form_template = 'Location of the template file to edit/add'
+        cls.form_template = 'Location of the template file to allow edit/add'
 
         WTFFormClass - needs to have a hidden id with the name 'id'
 

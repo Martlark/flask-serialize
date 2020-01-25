@@ -535,6 +535,56 @@ admin group.  Properties or database fields can be used as the property name.
         :return: list of dict objects
         """
 
+``form_page(cls, item_id=None)``
+
+Do all the work for creating and editing items using a template and a wtf form.
+
+Prerequisites.
+
+Setup the class properties to use your form items.
+
+* `form` - WTForm Class - needs to have a hidden id with the name 'id'
+* `form_route_create` - Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+* `form_route_update` - Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+* `form_template` - Location of the template file to allow edit/add
+* `item_id` - Item_id if editing, otherwise None
+
+Example:
+
+To allow the Setting class to use a template and WTForm to create and edit items.
+
+Add these property overrides to the Setting Class.
+
+.. code:: python
+
+    # form_page
+    form = EditForm
+    form_route_update = 'route_setting_form'
+    form_route_create = 'page_index'
+    form_template = 'setting_edit.html'
+    form_new_title_format = 'New Setting'
+
+Add this form.
+
+.. code:: python
+
+    class EditForm(FlaskForm):
+        id = HiddenField('id')
+        setting_type = StringField('setting_type', [validators.DataRequired()])
+        key = StringField('key')
+        value = StringField('value')
+        number = IntegerField('number')
+
+Setup these routes.
+
+.. code:: python
+
+    @app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
+    @app.route('/setting_form_add', methods=['POST'])
+    def route_setting_form(item_id=None):
+        return Setting.form_page(item_id)
+
+
 ``json_list(query_result)``
 
 Return a flask response in json format from a sql alchemy query result.
