@@ -6,6 +6,13 @@ flask-serialize
 DB Model JSON serialization with PUT, POST write for Flask applications using SQLAlchemy
 ========================================================================================
 
+Installation
+------------
+
+.. code:: bash
+
+    pip install flask-serialize
+
 Simple and quick to get going in two steps.
 -------------------------------------------------
 
@@ -543,15 +550,21 @@ Prerequisites.
 
 Setup the class properties to use your form items.
 
-* `form` - WTForm Class - needs to have a hidden id with the name 'id'
-* `form_route_create` - Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
-* `form_route_update` - Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
-* `form_template` - Location of the template file to allow edit/add
-* `item_id` - Item_id if editing, otherwise None
+* `form` - WTForm Class - **Required**. Needs to have a hidden input with the name 'id'
+* `form_route_create` - **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+* `form_route_update` - **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+* `form_template` - **Required**. Location of the template file to allow edit/add
+* `form_update_format` - Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+* `form_create_format` - Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+* `form_update_title_format` - Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
+* `form_create_title_format` - Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
+
+The routes must use item_id as the parameter for editing, otherwise None
 
 Example:
 
-To allow the Setting class to use a template and WTForm to create and edit items.
+To allow the Setting class to use a template and WTForm to create and edit items.  In this example after create the index page is
+loaded, using the method `page_index`.  After update, the same page is reloaded with the new item values in the form.
 
 Add these property overrides to the Setting Class.
 
@@ -570,10 +583,7 @@ Add this form.
 
     class EditForm(FlaskForm):
         id = HiddenField('id')
-        setting_type = StringField('setting_type', [validators.DataRequired()])
-        key = StringField('key')
         value = StringField('value')
-        number = IntegerField('number')
 
 Setup these routes.
 
@@ -584,6 +594,30 @@ Setup these routes.
     def route_setting_form(item_id=None):
         return Setting.form_page(item_id)
 
+Template.
+
+The template file needs to use WTForms to render the given form. `form`, `item`, `item_id` and `title` are passed as template
+variables.
+
+Example to update using POST:
+
+.. code:: html
+
+    <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
+      <input name="id" type="hidden" value="{{form.id.data}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
+
+Example to create using POST:
+
+.. code:: html
+
+    <form method="POST" submit="{{url_for('route_setting_form')}}">
+      <input name="id" type="hidden" value="{{form.id.data}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
 
 ``json_list(query_result)``
 
