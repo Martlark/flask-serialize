@@ -695,7 +695,7 @@ Create a score item with the parent being a course.
     @login_required
     def score(course_id):
         course = Course.query.get_or_404(course_id)
-        return Score.request_create_form(course_id=course.id)
+        return Score.request_create_form(course_id=course.id).as_dict
 
 ``request_update_form()``
 
@@ -722,7 +722,7 @@ Update a score item.
 Release Notes
 -------------
 
-* 1.1.4 - Fix doco typos.
+* 1.1.4 - Fix doco typos.  Add form_page method.  Improve test and example apps.
 * 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 * 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.
 * 1.1.0 - Suppress silly errors. Improve documentation.

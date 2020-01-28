@@ -47,7 +47,7 @@ class FlaskSerializeMixin:
     # cache model properties
     __model_props = {}
     # current version
-    version = '1.1.3'
+    version = '1.1.4'
 
     def to_date_short(self, d):
         """
