@@ -602,6 +602,7 @@ Example to update using POST, NOTE: only POST and GET are supported by form subm
 
 .. code:: html
 
+    <h3>{{title}}</h3>
     <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
       <input name="value" value="{{form.value.data}}">
       <input type="submit">
@@ -611,6 +612,7 @@ Example to create using POST:
 
 .. code:: html
 
+    <h3>{{title}}</h3>
     <form method="POST" submit="{{url_for('route_setting_form')}}">
       <input name="value" value="{{form.value.data}}">
       <input type="submit">
