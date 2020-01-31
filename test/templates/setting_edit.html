@@ -3,7 +3,6 @@
 <a href="{{url_for('page_index')}}">Home</a>
 <form id="setting-{{item.id}}" name="setting-post" method="POST"
       submit="{{url_for('route_setting_form', item_id=item.id)}}">
-    <input name="id" type="hidden" value="{{form.id.data}}">
     {{ render_field(form.key)}}
     {{ render_field(form.setting_type)}}
     {{ render_field(form.value)}}

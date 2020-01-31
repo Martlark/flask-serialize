@@ -524,7 +524,6 @@ class FlaskSerializeMixin:
             item = dict(id=None)
 
         if form.validate_on_submit():
-            item_id = request.form.get('id')
             try:
                 if item_id:
                     item.request_update_form()

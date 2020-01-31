@@ -36,7 +36,6 @@ def random_string(length=20):
 
 
 class EditForm(FlaskForm):
-    id = HiddenField('id')
     setting_type = StringField('setting_type', [validators.DataRequired()])
     key = StringField('key')
     value = StringField('value')
@@ -270,14 +269,14 @@ class Setting(FlaskSerializeMixin, db.Model):
 
     # checks if Flask-Serialize can create/update
     def verify(self, create=False):
-        if not self.key or len(self.key) < 1:
+        if len(self.key or '') < 1:
             raise ValidationError('Missing key')
 
         if self.value == '666':
             raise ValidationError('Value is Devils Number')
 
-        if not self.setting_type or len(self.setting_type) < 1:
-            raise ValidationError('Missing setting type')
+        if len(self.setting_type or '') < 2:
+            raise ValidationError('Insufficient setting type')
 
     @property
     def prop_test(self):

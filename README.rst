@@ -550,7 +550,7 @@ Prerequisites.
 
 Setup the class properties to use your form items.
 
-* `form` - WTForm Class - **Required**. Needs to have a hidden input with the name 'id'
+* `form` - WTForm Class - **Required**.
 * `form_route_create` - **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
 * `form_route_update` - **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
 * `form_template` - **Required**. Location of the template file to allow edit/add
@@ -559,7 +559,7 @@ Setup the class properties to use your form items.
 * `form_update_title_format` - Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
 * `form_create_title_format` - Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
 
-The routes must use item_id as the parameter for editing, otherwise None
+The routes must use item_id as the parameter for editing. Use no parameter when creating.
 
 Example:
 
@@ -582,7 +582,6 @@ Add this form.
 .. code:: python
 
     class EditForm(FlaskForm):
-        id = HiddenField('id')
         value = StringField('value')
 
 Setup these routes.
@@ -599,12 +598,11 @@ Template.
 The template file needs to use WTForms to render the given form. `form`, `item`, `item_id` and `title` are passed as template
 variables.
 
-Example to update using POST:
+Example to update using POST, NOTE: only POST and GET are supported by form submit:
 
 .. code:: html
 
     <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
-      <input name="id" type="hidden" value="{{form.id.data}}">
       <input name="value" value="{{form.value.data}}">
       <input type="submit">
     </form>
@@ -614,7 +612,6 @@ Example to create using POST:
 .. code:: html
 
     <form method="POST" submit="{{url_for('route_setting_form')}}">
-      <input name="id" type="hidden" value="{{form.id.data}}">
       <input name="value" value="{{form.value.data}}">
       <input type="submit">
     </form>
