@@ -6,6 +6,13 @@ flask-serialize
 DB Model JSON serialization with PUT, POST write for Flask applications using SQLAlchemy
 ========================================================================================
 
+Installation
+------------
+
+.. code:: bash
+
+    pip install flask-serialize
+
 Simple and quick to get going in two steps.
 -------------------------------------------------
 
@@ -113,7 +120,7 @@ Put an update to a single item as json.
 
 .. code:: JavaScript
 
-    {error:"any error message", message: "success message"}
+    {message: "success message"}
 
 
 Delete a single item.
@@ -124,11 +131,11 @@ Delete a single item.
     def delete_setting( item_id ):
         return Setting.get_delete_put_post(item_id)
 
-    Returns a Flask response with the result as a json object:
+    Returns a Flask response with the result and item deleted as a json response:
 
 .. code:: JavaScript
 
-    {error:"any error message", message: "success message"}
+    {message: "success message", item: {"id":5, name: "gone"}}
 
 Get all items as a json list.
 
@@ -160,7 +167,6 @@ JQuery example:
 .. code:: javascript
 
     function put(setting_id) {
-        try {
             return $.ajax({
                 url: `/update_setting/${setting_id}`,
                 method: 'PUT',
@@ -168,9 +174,9 @@ JQuery example:
                 data: {setting_type:"x",value:"100"},
             }).then(response => {
                 alert("OK:"+response.message);
+            }).fail((xhr, textStatus, errorThrown) => {
+                alert(`Error: ${xhr.responseText}`);
             });
-        } catch (e) {
-            alert(`Error updating ${e.message}`);
         }
     }
 
@@ -221,8 +227,8 @@ Create or update from a WTF form:
 
 Create a child database object:
 
-As example: add a Stat object to a Survey object using the request_create_form convenience method.  The foreign key
-to the parent Survey is provided as a kwargs parameter to the method.
+As example: add a `Stat` object to a Survey object using the `request_create_form` convenience method.  The foreign key
+to the parent `Survey` is provided as a `kwargs` parameter to the method.
 
 .. code:: python
 
@@ -444,8 +450,8 @@ override the ``to_date_short`` method of the mixin.  Example:
             return int(time.mktime(date_value.timetuple())) * 1000
 
 
-Conversion types (to database) add or replace update/create
------------------------------------------------------------
+Conversion types when writing to database during update and create
+------------------------------------------------------------------
 
 Add or replace to db conversion methods by using a list of dicts that specify conversions.
 
@@ -457,6 +463,21 @@ Default is:
 
 * type: a python object type  
 * method: a lambda or method to provide the conversion to a database acceptable value.
+
+First the correct conversion will be attempted to be determined from the type of the updated or
+new field value.  Then, an introspection from the destination column type will be used to get the
+correct value converter type.
+
+Notes:
+
+* The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
+  boolean appears in the list before any int convert type.
+
+* To undertake a more specific column conversion use the `verify` method to explicitly set the class instance value.  The
+  `verify` method is always called before a create or update to the database.
+
+* When converting values from query strings or form values the type will always be `str`.
+
 
 Mixin Helper methods and properties
 ===================================
@@ -520,6 +541,82 @@ admin group.  Properties or database fields can be used as the property name.
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
+
+``form_page(cls, item_id=None)``
+
+Do all the work for creating and editing items using a template and a wtf form.
+
+Prerequisites.
+
+Setup the class properties to use your form items.
+
+* `form` - WTForm Class - **Required**.
+* `form_route_create` - **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+* `form_route_update` - **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+* `form_template` - **Required**. Location of the template file to allow edit/add
+* `form_update_format` - Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+* `form_create_format` - Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+* `form_update_title_format` - Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
+* `form_create_title_format` - Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
+
+The routes must use item_id as the parameter for editing. Use no parameter when creating.
+
+Example:
+
+To allow the Setting class to use a template and WTForm to create and edit items.  In this example after create the index page is
+loaded, using the method `page_index`.  After update, the same page is reloaded with the new item values in the form.
+
+Add these property overrides to the Setting Class.
+
+.. code:: python
+
+    # form_page
+    form = EditForm
+    form_route_update = 'route_setting_form'
+    form_route_create = 'page_index'
+    form_template = 'setting_edit.html'
+    form_new_title_format = 'New Setting'
+
+Add this form.
+
+.. code:: python
+
+    class EditForm(FlaskForm):
+        value = StringField('value')
+
+Setup these routes.
+
+.. code:: python
+
+    @app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
+    @app.route('/setting_form_add', methods=['POST'])
+    def route_setting_form(item_id=None):
+        return Setting.form_page(item_id)
+
+Template.
+
+The template file needs to use WTForms to render the given form. `form`, `item`, `item_id` and `title` are passed as template
+variables.
+
+Example to update using POST, NOTE: only POST and GET are supported by form submit:
+
+.. code:: html
+
+    <h3>{{title}}</h3>
+    <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
+
+Example to create using POST:
+
+.. code:: html
+
+    <h3>{{title}}</h3>
+    <form method="POST" submit="{{url_for('route_setting_form')}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
 
 ``json_list(query_result)``
 
@@ -597,7 +694,7 @@ Create a score item with the parent being a course.
     @login_required
     def score(course_id):
         course = Course.query.get_or_404(course_id)
-        return Score.request_create_form(course_id=course.id)
+        return Score.request_create_form(course_id=course.id).as_dict
 
 ``request_update_form()``
 
@@ -624,12 +721,13 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.
 * 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 * 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.
 * 1.1.0 - Suppress silly errors. Improve documentation.
-* 1.0.9 - Add kwargs to request_create_form to pass Object projects to be used when creating the Object instance
-* 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use to improve performance.  It is no longer possible to alter model definitions dynamically.
-* 1.0.7 - Add json body support to post update.
+* 1.0.9 - Add kwargs to request_create_form to pass Object props to be used when creating the Object instance
+* 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use.  It is no longer possible to alter model definitions dynamically.
+* 1.0.7 - Add json request body support to post update.
 * 1.0.5 - Allow sorting of json lists.
 
 Licensing

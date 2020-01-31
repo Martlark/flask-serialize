@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{url_for('page_index')}}">Home</a>
+<form id="setting-{{item.id}}" name="setting-post" method="POST"
+      submit="{{url_for('route_setting_form', item_id=item.id)}}">
+    {{ render_field(form.key)}}
+    {{ render_field(form.setting_type)}}
+    {{ render_field(form.value)}}
+    {{ render_field(form.number)}}
+    <input type="submit">
+</form>
+<h3>Sub Settings</h3>
+<table>
+    <thead>
+    <tr>
+        <th>id</a></th>
+        <th>Values</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+
+    {% for s in item.sub_settings %}
+    <tr>
+        <td>{{s.id}}</td>
+        <td>
+            <form class="sub-setting-edit" data-id="{{s.id}}" name="sub-setting-{{s.id}}" method="POST"
+                  action="/sub_setting_put/{{s.id}}">
+                <input name="flong" value="{{s.flong}}">
+                <input name="boolean" type="checkbox" {% if s.boolean %}checked{% endif %}>
+                <input type="submit"></form>
+        </td>
+        <td>
+            <button class="sub-setting-delete" data-id="{{s.id}}">Delete</button>
+        </td>
+    </tr>
+    </tbody>
+    {% endfor %}
+</table>
+<h3>Add New Sub Setting</h3>
+<form id="sub-setting-add" name="sub-setting-add" method="POST" action="/sub_setting_add/{{item.id}}">
+    <label>Flong: <input name="flong" class="random-value" value="{{flong}}"></label>
+    <input type="submit">
+</form>
+
+{% endblock %}}

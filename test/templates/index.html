@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<table>
+    <thead>
+    <tr>
+        <th>id</a></th>
+        <th>key</th>
+        <th>value</th>
+        <th>number</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for setting in settings %}
+    <tr>
+        <td><a href="{{url_for('route_setting_form', item_id=setting.id)}}">{{setting.id}}</a></td>
+        <td>{{setting.key}}</td>
+        <td>{{setting.value}}</td>
+        <td>{{setting.number}}</td>
+        <td><button class="index-delete" data-id="{{setting.id}}">Delete</button></td>
+    </tr>
+    </tbody>
+    {% endfor %}
+</table>
+<h3>Add New</h3>
+<form method="POST" action="{{url_for('route_setting_form')}}">
+    <label>setting_type: <input name="setting_type" value="{{setting_type}}"></label>
+    <label>key: <input name="key" value="{{key}}"></label>
+    <label>value: <input name="value" value="{{value}}"></label>
+    <input type="submit">
+</form>
+{% endblock %}

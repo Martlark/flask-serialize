@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import request, jsonify, abort, current_app
+from flask import request, jsonify, abort, current_app, flash, redirect, url_for, render_template
 from easydict import EasyDict
 
 
@@ -33,12 +33,21 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # properties or fields to return when updating using get or post
     update_properties = []
+    # form_page properties
+    form = None  # name of the form to use
+    form_route_update = form_route_create = ''  # method names for successful redirect
+    form_template = ''  # template for editing
+    # all these called with .format(cls) or .format(item) as appropriate
+    form_update_format = 'Updated {}'
+    form_create_format = 'Created {}'
+    form_new_title_format = 'New {}'
+    form_update_title_format = 'Edit {}'
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
-    model_props = {}
+    __model_props = {}
     # current version
-    version = '1.1.3'
+    version = '1.1.4'
 
     def to_date_short(self, d):
         """
@@ -139,13 +148,6 @@ class FlaskSerializeMixin:
         """
         return jsonify(self.__as_exclude_json_dict())
 
-    def clear_cache(self):
-        self.model_props = {}
-
-    def set_column_type_converter(self, col_type, method):
-        self.column_type_converters[col_type] = method
-        self.model_props = {}
-
     def __as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
@@ -180,22 +182,13 @@ class FlaskSerializeMixin:
         """
         return [item.as_dict for item in relationships]
 
-    @property
-    def as_dict(self):
+    def __get_props(self):
         """
-        convert a sql alchemy query result item to dict
-        override these properties to control the result:
+        get the properties for this table to be used for introspection
 
-        * relationship_fields - follow relationships listed
-        * exclude_serialize_fields - exclude listed fields from serialization
-        * column_type_converters - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
-        :return {dictionary} the item as a dict
+        :return: properties EasyDict
         """
-
-        # built in converters
-        # can be replaced dynamically using column_type_converters
-        d = {}
-        props = self.model_props.get(self.__table__)
+        props = self.__model_props.get(self.__table__)
         if not props:
             props = EasyDict()
             props.converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
@@ -219,7 +212,25 @@ class FlaskSerializeMixin:
                     f.converter = props.converters.get(f.c_type)
                     props.field_list.append(f)
 
-            self.model_props[self.__table__] = props
+            self.__model_props[self.__table__] = props
+        return props
+
+    @property
+    def as_dict(self):
+        """
+        convert a sql alchemy query result item to dict
+        override these properties to control the result:
+
+        * relationship_fields - follow relationships listed
+        * exclude_serialize_fields - exclude listed fields from serialization
+        * column_type_converters - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
+        :return {dictionary} the item as a dict
+        """
+
+        # built in converters
+        # can be replaced dynamically using column_type_converters
+        d = {}
+        props = self.__get_props()
 
         for c in props.field_list:
             try:
@@ -236,10 +247,36 @@ class FlaskSerializeMixin:
                     d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
-    def __convert_value(self, value):
+    def __get_update_field_type(self, field, value):
+        """
+        get the type of the update to db field from cached table properties
+
+        :param field:
+        :return: class of the type
+        """
+        props = self.__get_props()
+        if props:
+            for f in props.field_list:
+                if f.name == field:
+                    if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT"):
+                        return str
+                    if f.c_type.startswith("INTEGER"):
+                        return int
+                    if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL"):
+                        return float
+                    if f.c_type.startswith("DATE") or f.c_type.startswith("TIME"):
+                        return datetime
+                    if f.c_type.startswith("BOOLEAN"):
+                        return bool
+
+        return None
+
+    def __convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
         override built in conversions by setting the value of convert_types. ie:
+        first uses bare value to determine type and then
+        uses db derived values
         convert_types = [{'type':bool, 'method': lambda x: not x}]
 
         :param value:
@@ -249,6 +286,13 @@ class FlaskSerializeMixin:
             if isinstance(value, t['type']):
                 value = t['method'](value)
                 return value
+
+        instance_type = self.__get_update_field_type(name, value)
+        if instance_type:
+            for t in self.convert_types:
+                if instance_type == t['type']:
+                    value = t['method'](value)
+                    return value
         return value
 
     def request_update_form(self):
@@ -289,12 +333,12 @@ class FlaskSerializeMixin:
                 for field in cls.create_fields:
                     if field in json_data:
                         value = json_data.get(field)
-                        setattr(new_item, field, new_item.__convert_value(value))
+                        setattr(new_item, field, new_item.__convert_value(field, value))
         except:
             for field in cls.create_fields:
                 if field in request.form:
                     value = request.form.get(field)
-                    setattr(new_item, field, new_item.__convert_value(value))
+                    setattr(new_item, field, new_item.__convert_value(field, value))
 
         new_item.verify(create=True)
         new_item.update_timestamp()
@@ -345,7 +389,7 @@ class FlaskSerializeMixin:
 
         for field in self.update_fields:
             if field in data_dict:
-                setattr(self, field, self.__convert_value(data_dict[field]))
+                setattr(self, field, self.__convert_value(field, data_dict[field]))
 
     def can_delete(self):
         """
@@ -454,3 +498,55 @@ class FlaskSerializeMixin:
         if not item:
             return {}
         return item.as_json
+
+    @classmethod
+    def form_page(cls, item_id=None):
+        """
+        Do all the work for creating and editing items using a template and a wtf form.
+        Prerequisites.
+
+        cls.form = WTFFormClass
+        cls.form_route_create = Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+        cls.form_route_update = Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+        cls.form_template = 'Location of the template file to allow edit/add'
+
+        WTFFormClass - needs to have a hidden id with the name 'id'
+
+        :param item_id: Item_id if editing, otherwise None
+        :return: templates and redirects as required
+        """
+        form = cls.form()
+        if item_id:
+            item = cls.query.get_or_404(item_id)
+            title = cls.form_update_title_format.format(item)
+        else:
+            title = cls.form_new_title_format.format(cls)
+            item = dict(id=None)
+
+        if form.validate_on_submit():
+            try:
+                if item_id:
+                    item.request_update_form()
+                    msg = cls.form_update_format.format(item)
+                    if msg:
+                        flash(msg)
+                    return redirect(url_for(cls.form_route_update, item_id=item_id))
+                else:
+                    new_item = cls.request_create_form()
+                    msg = cls.form_create_format.format(new_item)
+                    if msg:
+                        flash(msg)
+                    return redirect(url_for(cls.form_route_create, item_id=new_item.id))
+            except Exception as e:
+                flash(str(e), category='danger')
+        elif request.method == 'GET':
+            if not item_id:
+                # new blank form
+                item = cls()
+
+            form = cls.form(obj=item)
+
+        if form.errors:
+            flash(''.join([f'{form[f].label.text}: {"".join(e)} ' for f, e in form.errors.items()]), category='danger')
+
+        return render_template(cls.form_template, title=title, item_id=item_id, item=item, form=form)

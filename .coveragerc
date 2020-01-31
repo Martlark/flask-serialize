@@ -5,3 +5,5 @@ omit = setup.py
     .pytest_cache
     dist
     venv*
+    test
+    flask_serialize.egg-info
