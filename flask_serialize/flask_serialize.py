@@ -46,8 +46,10 @@ class FlaskSerializeMixin:
     db = None
     # cache model properties
     __model_props = {}
+    # previous values of an instance before update attempted
+    previous_field_value = {}
     # current version
-    version = '1.1.4'
+    version = '1.1.5'
 
     def to_date_short(self, d):
         """
@@ -379,7 +381,8 @@ class FlaskSerializeMixin:
 
     def update_from_dict(self, data_dict):
         """
-        uses a dict to update fields of the model instance
+        uses a dict to update fields of the model instance.  sets previous values to
+        self.previous_values[field_name] before the update
 
         :param data_dict:
         :return:
@@ -388,6 +391,7 @@ class FlaskSerializeMixin:
             raise Exception('update_fields is empty')
 
         for field in self.update_fields:
+            self.previous_field_value[field] = getattr(self, field)
             if field in data_dict:
                 setattr(self, field, self.__convert_value(field, data_dict[field]))
 
