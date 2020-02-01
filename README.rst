@@ -16,7 +16,7 @@ Installation
 Simple and quick to get going in two steps.
 -------------------------------------------------
 
-1. Import and add the FlaskSerializeMixin mixin to a model:
+.1. Import and add the FlaskSerializeMixin mixin to a model:
     
 .. code:: python
 
@@ -26,7 +26,7 @@ Simple and quick to get going in two steps.
         id = db.Column(db.Integer, primary_key=True)
         # other fields ...
 
-2. Configure the route with the do all mixin method:
+.2. Configure the route with the do all mixin method:
 
 .. code:: python
 
@@ -35,7 +35,7 @@ Simple and quick to get going in two steps.
     def items(item_id=None):
         return Item.get_delete_put_post(item_id)
 
-3. Done!  Returns JSON as a single item or a list with only a single route.
+.3. Done!  Returns JSON as a single item or a list with only a single route.
 
 Flask-serialize is intended for joining a Flask SQLAlchemy Python backend with
 a JavaScript Web client.  It allows read JSON serialization
@@ -678,6 +678,20 @@ Example:
     def score(course):
         return Score.json_first(class_name=course)
 
+``previous_field_value``
+
+A dictionary of the previous field values before an update is applied from a dict, form or json update operation. Helpful
+in the `verify` method to see if field values are to be changed.
+
+Example:
+
+.. code:: python
+
+    def verify(self, create=False):
+        previous_value = self.previous_field_value.get('value')
+        if previous_value != self.value:
+            current_app.logger.warning(f'value is changing from {previous_value}'
+
 ``request_create_form(**kwargs)``
 
 Use the contents of a Flask request form or request json data to create a item
@@ -721,6 +735,7 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.5 - Add previous_field_value array that is set during update.  Allows comparing new and previous values during verify.
 * 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.
 * 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 * 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.

@@ -361,24 +361,28 @@ def test_create_update_json(client):
 def test_create_update_delete(client):
     # create
     key = random_string()
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value', number=10))
+    value = random_string()
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, number=10))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
-    assert item.value == 'test-value'
+    assert item.value == value
     # test that number is not set on creation as it is not included in create_fields
     assert item.number == 0
     old_updated = item.updated
 
-    item.update_from_dict(dict(value='new-value'))
-    assert item.value == 'new-value'
+    new_value = random_string()
+    item.update_from_dict(dict(value=new_value))
+    assert item.previous_field_value['value'] == value
+    assert item.value == new_value
     # set to new value
+    new_value = random_string()
     rv = client.post('/setting_edit/{}'.format(item.id),
-                     data=dict(value='yet-another-value', number=100))
+                     data=dict(value=new_value, number=100))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
-    assert item.value == 'yet-another-value'
+    assert item.value == new_value
     assert item.number == 200
     # check updated is changing
     assert old_updated != item.updated
