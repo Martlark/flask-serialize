@@ -690,7 +690,7 @@ Example:
     def verify(self, create=False):
         previous_value = self.previous_field_value.get('value')
         if previous_value != self.value:
-            current_app.logger.warning(f'value is changing from {previous_value}'
+            current_app.logger.warning(f'value is changing from {previous_value}')
 
 ``request_create_form(**kwargs)``
 
