@@ -82,10 +82,10 @@ Model setup:
     
         # checks if Flask-Serialize can create/update
         def verify(self, create=False):
-            if not self.key or len(self.key) < 1:
+            if len(self.key or '') < 1:
                 raise Exception('Missing key')
     
-            if not self.setting_type or len(self.setting_type) < 1:
+            if len(self.setting_type or '') < 1:
                 raise Exception('Missing setting type')
     
         def __repr__(self):
@@ -531,6 +531,13 @@ admin group.  Properties or database fields can be used as the property name.
         :return: json object
         """
 
+``before_update(self, data_dict)``
+
+Hook to call before any of `update_from_dict`, `request_update_form`, `request_update_json` is called so that
+you may alter or add update values before the item is written in preparation for update to db
+
+        data_dict: a dictionary of new data to apply to the item
+
 ``dict_list()``
 
 .. code:: python
@@ -735,6 +742,7 @@ Update a score item.
 Release Notes
 -------------
 
+* 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add before_update hook.
 * 1.1.5 - Add previous_field_value array that is set during update.  Allows comparing new and previous values during verify.
 * 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.
 * 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.

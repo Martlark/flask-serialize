@@ -49,7 +49,17 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    version = '1.1.5'
+    version = '1.1.6'
+
+    def before_update(self, data_dict):
+        """
+        hook to call before any update_from_dict so that you may alter update values
+        before the item is written in preparation for update to db
+
+        :param data_dict: the new data to apply to the item
+        :return:
+        """
+        pass
 
     def to_date_short(self, d):
         """
@@ -387,6 +397,7 @@ class FlaskSerializeMixin:
         :param data_dict:
         :return:
         """
+        self.before_update(data_dict)
         if len(self.update_fields or '') == 0:
             raise Exception('update_fields is empty')
 
@@ -469,7 +480,7 @@ class FlaskSerializeMixin:
                 item.request_update_form()
             except Exception as e:
                 return str(e), cls.http_error_code
-            return dict(message='Updated', properties=item.return_properties())
+            return jsonify(dict(message='Updated', properties=item.return_properties()))
 
         elif request.method == 'DELETE':
             # delete a single item
@@ -480,7 +491,7 @@ class FlaskSerializeMixin:
             except Exception as e:
                 return str(e), cls.http_error_code
 
-            return dict(item=item.as_dict, message='Deleted')
+            return jsonify(dict(item=item.as_dict, message='Deleted'))
 
         # PUT, save the modified item
         try:
@@ -488,19 +499,19 @@ class FlaskSerializeMixin:
         except Exception as e:
             return str(e), cls.http_error_code
 
-        return dict(message='Updated', properties=item.return_properties())
+        return jsonify(dict(message='Updated', properties=item.return_properties()))
 
     @classmethod
     def json_first(cls, **kwargs):
         """
-        return the first result in json format using the filter_by arguments
+        return the first result in json format using the filter_by arguments, or {} if no result
 
         :param kwargs: SQLAlchemy query.filter_by arguments
         :return: flask response json item or {} if no result
         """
         item = cls.query.filter_by(**kwargs).first()
         if not item:
-            return {}
+            return jsonify({})
         return item.as_json
 
     @classmethod
