@@ -262,6 +262,11 @@ class Setting(FlaskSerializeMixin, db.Model):
     form_template = 'setting_edit.html'
     form_new_title_format = 'New Setting'
 
+    def before_update(self, data_dict):
+        d = dict(data_dict)
+        d['active'] = d.get('active', 'n')
+        return d
+
     # checks if Flask-Serialize can delete
     def can_delete(self):
         if self.value == '1234':

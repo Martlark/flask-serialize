@@ -478,6 +478,9 @@ Notes:
 
 * When converting values from query strings or form values the type will always be `str`.
 
+* To add or modify values from a Flask request object before they are applied to the instance use the ``before_update`` hook.
+  ``verify`` is called after ``before_update``.
+
 
 Mixin Helper methods and properties
 ===================================
@@ -528,15 +531,26 @@ admin group.  Properties or database fields can be used as the property name.
     def as_json(self):
         """
         the sql object as a json object without the excluded dict and json fields
+
         :return: json object
         """
 
 ``before_update(self, data_dict)``
 
+.. code:: python
+
+    def dict_list(cls, query_result):
+        """
+        param: data_dict: a dictionary of new data to apply to the item
+        return: the new data_dict to use when updating
+        """
+
 Hook to call before any of `update_from_dict`, `request_update_form`, `request_update_json` is called so that
-you may alter or add update values before the item is written in preparation for update to db
+you may alter or add update values before the item is written in preparation for update to db.  NOTE: copy data_dict to
+a normal dict as it may be an Immutable type from the request object.
 
         data_dict: a dictionary of new data to apply to the item
+        return: the new data_dict to use when updating
 
 ``dict_list()``
 

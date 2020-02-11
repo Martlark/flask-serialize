@@ -57,9 +57,9 @@ class FlaskSerializeMixin:
         before the item is written in preparation for update to db
 
         :param data_dict: the new data to apply to the item
-        :return:
+        :return: the new data_dict to use for updating
         """
-        pass
+        return data_dict
 
     def to_date_short(self, d):
         """
@@ -397,7 +397,7 @@ class FlaskSerializeMixin:
         :param data_dict:
         :return:
         """
-        self.before_update(data_dict)
+        data_dict = self.before_update(data_dict)
         if len(self.update_fields or '') == 0:
             raise Exception('update_fields is empty')
 

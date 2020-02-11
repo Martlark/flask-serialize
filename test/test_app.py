@@ -284,6 +284,26 @@ def test_excluded(client):
     assert 'updated' in item.as_dict
 
 
+def test_before_update(client):
+    key = random_string()
+    test_value =random_string()
+    # create using post
+    rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value=test_value, number=10))
+    assert rv.status_code == 200
+    item = Setting.query.get_or_404(rv.json['id'])
+    assert item
+    assert rv.json['value'] == test_value
+    assert item.value == test_value
+    assert item.number == 0
+    # update using post - missing active should become 'n' via before_update hook
+    new_value = random_string()
+    rv = client.post('/setting_post/{}'.format(item.id),
+                     data=dict(setting_type='test', key=key, value=new_value, number=10))
+    assert rv.status_code == 200
+    assert rv.json['message'] == 'Updated'
+    item = Setting.query.get_or_404(item.id)
+    assert 'n' == item.active
+
 def test_get_delete_put_post(client):
     key = random_string()
     # create using post
