@@ -20,7 +20,7 @@ class FlaskSerializeMixin:
     order_by_field = None
     order_by_field_desc = None
     # default error code
-    http_error_code = 400
+    __http_error_code = 400
     # list of fields used to set the update date/time
     timestamp_fields = ['updated', 'timestamp']
     # method to be used to timestamp with update_timestamp method
@@ -33,15 +33,6 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
     # properties or fields to return when updating using get or post
     update_properties = []
-    # form_page properties
-    form = None  # name of the form to use
-    form_route_update = form_route_create = ''  # method names for successful redirect
-    form_template = ''  # template for editing
-    # all these called with .format(cls) or .format(item) as appropriate
-    form_update_format = 'Updated {}'
-    form_create_format = 'Created {}'
-    form_new_title_format = 'New {}'
-    form_update_title_format = 'Edit {}'
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
@@ -307,24 +298,6 @@ class FlaskSerializeMixin:
                     return value
         return value
 
-    def request_update_form(self):
-        """
-        update/create the item using form data from the request object
-        only present fields are updated
-        throws error if validation fails
-
-        :return: True when complete
-        """
-        if request.content_type == 'application/json':
-            return self.request_update_json()
-        else:
-            self.update_from_dict(request.form)
-        self.verify()
-        self.update_timestamp()
-        self.db.session.add(self)
-        self.db.session.commit()
-        return True
-
     @classmethod
     def request_create_form(cls, **kwargs):
         """
@@ -358,9 +331,27 @@ class FlaskSerializeMixin:
         cls.db.session.commit()
         return new_item
 
+    def request_update_form(self):
+        """
+        update/create the item using form data from the request object
+        only present fields are updated
+        throws error if validation fails
+
+        :return: True when complete
+        """
+        if request.content_type == 'application/json' or request.method == 'PUT':
+            return self.request_update_json()
+        else:
+            self.update_from_dict(request.form)
+        self.verify()
+        self.update_timestamp()
+        self.db.session.add(self)
+        self.db.session.commit()
+        return True
+
     def request_update_json(self):
         """
-        Update an item from request json data, probably from a PUT or PATCH.
+        Update an item from request json data or PUT params, probably from a PUT or PATCH.
         Throws exception if not valid
 
         :return: True if item updated
@@ -466,40 +457,30 @@ class FlaskSerializeMixin:
                 try:
                     return cls.request_create_form().as_json
                 except Exception as e:
-                    return str(e), cls.http_error_code
+                    return str(e), cls.__http_error_code
 
             abort(404)
 
         # get a single item
-        if request.method == 'GET':
-            return item.as_json
+        try:
+            if request.method == 'GET':
+                return item.as_json
 
-        elif request.method == 'POST':
-            # update single item
-            try:
+            elif request.method == 'POST' or request.method == 'PUT':
+                # update single item
                 item.request_update_form()
-            except Exception as e:
-                return str(e), cls.http_error_code
-            return jsonify(dict(message='Updated', properties=item.return_properties()))
+                return jsonify(dict(message='Updated', properties=item.return_properties()))
 
-        elif request.method == 'DELETE':
-            # delete a single item
-            try:
+            elif request.method == 'DELETE':
+                # delete a single item
                 item.can_delete()
                 cls.db.session.delete(item)
                 cls.db.session.commit()
-            except Exception as e:
-                return str(e), cls.http_error_code
+                return jsonify(dict(item=item.as_dict, message='Deleted'))
 
-            return jsonify(dict(item=item.as_dict, message='Deleted'))
-
-        # PUT, save the modified item
-        try:
-            item.request_update_json()
         except Exception as e:
-            return str(e), cls.http_error_code
+            return str(e), cls.__http_error_code
 
-        return jsonify(dict(message='Updated', properties=item.return_properties()))
 
     @classmethod
     def json_first(cls, **kwargs):
@@ -513,55 +494,3 @@ class FlaskSerializeMixin:
         if not item:
             return jsonify({})
         return item.as_json
-
-    @classmethod
-    def form_page(cls, item_id=None):
-        """
-        Do all the work for creating and editing items using a template and a wtf form.
-        Prerequisites.
-
-        cls.form = WTFFormClass
-        cls.form_route_create = Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
-        cls.form_route_update = Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
-        cls.form_template = 'Location of the template file to allow edit/add'
-
-        WTFFormClass - needs to have a hidden id with the name 'id'
-
-        :param item_id: Item_id if editing, otherwise None
-        :return: templates and redirects as required
-        """
-        form = cls.form()
-        if item_id:
-            item = cls.query.get_or_404(item_id)
-            title = cls.form_update_title_format.format(item)
-        else:
-            title = cls.form_new_title_format.format(cls)
-            item = dict(id=None)
-
-        if form.validate_on_submit():
-            try:
-                if item_id:
-                    item.request_update_form()
-                    msg = cls.form_update_format.format(item)
-                    if msg:
-                        flash(msg)
-                    return redirect(url_for(cls.form_route_update, item_id=item_id))
-                else:
-                    new_item = cls.request_create_form()
-                    msg = cls.form_create_format.format(new_item)
-                    if msg:
-                        flash(msg)
-                    return redirect(url_for(cls.form_route_create, item_id=new_item.id))
-            except Exception as e:
-                flash(str(e), category='danger')
-        elif request.method == 'GET':
-            if not item_id:
-                # new blank form
-                item = cls()
-
-            form = cls.form(obj=item)
-
-        if form.errors:
-            flash(''.join([f'{form[f].label.text}: {"".join(e)} ' for f, e in form.errors.items()]), category='danger')
-
-        return render_template(cls.form_template, title=title, item_id=item_id, item=item, form=form)
