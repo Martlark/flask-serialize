@@ -235,11 +235,10 @@ class FlaskSerializeMixin:
         """
 
         # built in converters
-        # can be replaced dynamically using column_type_converters
+        # can be replaced using column_type_converters
         d = {}
-        props = self.__get_props()
 
-        for c in props.field_list:
+        for c in self.__get_props().field_list:
             try:
                 d[c.name] = v = getattr(self, c.name, '')
             except Exception as e:
@@ -311,7 +310,6 @@ class FlaskSerializeMixin:
         :return: the new created item
         """
         new_item = cls(**kwargs)
-        # field_list = cls.__table__.columns
 
         if len(new_item.create_fields or '') == 0:
             raise Exception('create_fields is empty')
@@ -378,7 +376,8 @@ class FlaskSerializeMixin:
 
     def update_timestamp(self):
         """
-        update any timestamp fields using the Class timestamp method
+        update any timestamp fields using the Class timestamp method if those fields exist
+
         """
         for field in self.timestamp_fields:
             if hasattr(self, field):
@@ -389,7 +388,7 @@ class FlaskSerializeMixin:
         uses a dict to update fields of the model instance.  sets previous values to
         self.previous_values[field_name] before the update
 
-        :param data_dict:
+        :param data_dict: the data to update
         :return:
         """
         data_dict = self.before_update(data_dict)
@@ -403,7 +402,7 @@ class FlaskSerializeMixin:
 
     def can_delete(self):
         """
-        raise a message if deletion is not allowed
+        raise an exception if deletion is not allowed
 
         :return:
         """
@@ -417,21 +416,18 @@ class FlaskSerializeMixin:
         """
         pass
 
-    def return_properties(self):
+    def __return_properties(self):
         """
         when returning success codes from a put/post update return a dict
         composed of the property values from the update_properties list.
         ie:
-        return jsonify({'message': 'Updated', 'properties': item.return_properties()})
+        return jsonify({'message': 'Updated', 'properties': item.__return_properties()})
         this can be used to communicate from the model on the server to the JavaScript code
         interesting things from updates
 
         :return: dictionary of properties
         """
-        props = {}
-        for prop in self.update_properties:
-            props[prop] = self.property_converter(getattr(self, prop))
-        return props
+        return {prop: self.property_converter(getattr(self, prop)) for prop in self.update_properties}
 
     @classmethod
     def get_delete_put_post(cls, item_id=None, user=None, prop_filters=None):
@@ -469,7 +465,7 @@ class FlaskSerializeMixin:
             elif request.method == 'POST' or request.method == 'PUT':
                 # update single item
                 item.request_update_form()
-                return jsonify(dict(message='Updated', properties=item.return_properties()))
+                return jsonify(dict(message='Updated', properties=item.__return_properties()))
 
             elif request.method == 'DELETE':
                 # delete a single item
