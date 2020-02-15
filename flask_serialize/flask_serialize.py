@@ -40,7 +40,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    version = '1.1.6'
+    version = '1.1.7'
 
     def before_update(self, data_dict):
         """
@@ -71,10 +71,7 @@ class FlaskSerializeMixin:
         :return: the object
         :throws: 404 exception if not found
         """
-        item = cls.query.filter_by(id=item_id, user=user).first()
-        if not item:
-            abort(404)
-        return item
+        return cls.query.filter_by(id=item_id, user=user).first_or_404()
 
     @classmethod
     def json_filter_by(cls, **kwargs):
@@ -162,8 +159,13 @@ class FlaskSerializeMixin:
 
     def property_converter(self, value):
         """
-        convert datetime and set to a json compatible format.
-        override this method to alter default
+        convert to a json compatible format.
+
+        * complex - just uses str conversion
+        * datetime - short format as per to_date_short
+        * set - becomes a list
+
+        override or extend this method to alter defaults
 
         :param value: value to convert
         :return: the new value
@@ -172,6 +174,8 @@ class FlaskSerializeMixin:
             return self.to_date_short(value)
         if isinstance(value, set):
             return list(value)
+        if isinstance(value, complex):
+            return str(value)
         return value
 
     @staticmethod
@@ -452,17 +456,13 @@ class FlaskSerializeMixin:
                 result = cls.query.all()
             return cls.json_list(result, prop_filters=prop_filters)
 
-        if not item:
-            if request.method == 'POST':
-                try:
-                    return cls.request_create_form().as_json
-                except Exception as e:
-                    return str(e), cls.__http_error_code
-
-            abort(404)
-
-        # get a single item
         try:
+            if not item:
+                if request.method == 'POST':
+                    return cls.request_create_form().as_json
+                abort(405)
+
+            # get a single item
             if request.method == 'GET':
                 return item.as_json
 
@@ -480,7 +480,6 @@ class FlaskSerializeMixin:
 
         except Exception as e:
             return str(e), cls.__http_error_code
-
 
     @classmethod
     def json_first(cls, **kwargs):

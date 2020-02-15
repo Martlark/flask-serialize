@@ -462,7 +462,7 @@ override the ``to_date_short`` method of the mixin.  Example:
 Conversion types when writing to database during update and create
 ------------------------------------------------------------------
 
-Add or replace to db conversion methods by using a list of dicts that specify conversions.
+Add or replace to db conversion methods by using a list of dicts that specify conversions for SQLAlchemy columns.
 
 Default is:
 
@@ -476,6 +476,9 @@ Default is:
 First the correct conversion will be attempted to be determined from the type of the updated or
 new field value.  Then, an introspection from the destination column type will be used to get the
 correct value converter type.
+
+@property values are converted using the `property_converter` class method.  Override or extend it
+for unexpected types.
 
 Notes:
 
@@ -794,6 +797,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.1.7 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.
 * 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add before_update hook.
 * 1.1.5 - Add previous_field_value array that is set during update.  Allows comparing new and previous values during verify.
 * 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.

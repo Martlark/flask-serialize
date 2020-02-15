@@ -329,10 +329,13 @@ def test_get_delete_put_post(client):
     # post item not found
     rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
                      data=dict(setting_type='test', key=key, value='new-value', number=10))
-    assert rv.status_code == 404
+    assert 404 == rv.status_code
+    # put not valid in something meant for post
+    rv = client.put('/setting_post')
+    assert 400 == rv.status_code
     # post fail validation
     rv = client.post('/setting_post/{}'.format(item.id), data=dict(key=''))
-    assert rv.status_code == 400
+    assert 400 == rv.status_code
     assert rv.data == b'Missing key'
     # update using put
     new_value = random_string()
