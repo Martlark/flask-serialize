@@ -13,6 +13,8 @@ from flask_wtf import FlaskForm
 
 from wtforms import StringField, IntegerField, ValidationError, validators, HiddenField
 
+from flask_serialize.form_page import FormPageMixin
+
 app = Flask("test_app")
 app.testing = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -53,7 +55,7 @@ def page_index(item_id=None):
 # Get all items as a json list.
 # post, put update
 # and get single
-@app.route('/setting_post', methods=['POST'])
+@app.route('/setting_post', methods=['POST', 'PUT'])
 @app.route('/setting_get_all', methods=['GET'])
 @app.route('/setting_post/<int:item_id>', methods=['POST'])
 @app.route('/setting_put/<int:item_id>', methods=['PUT'])
@@ -216,7 +218,7 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     timestamp_stamper = one_day_ago
 
 
-class Setting(FlaskSerializeMixin, db.Model):
+class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     setting_type = db.Column(db.String(120), index=True, default='misc')
@@ -256,11 +258,11 @@ class Setting(FlaskSerializeMixin, db.Model):
         {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
     ]
     # form_page
-    form = EditForm
-    form_route_update = 'route_setting_form'
-    form_route_create = 'page_index'
-    form_template = 'setting_edit.html'
-    form_new_title_format = 'New Setting'
+    form_page_form = EditForm
+    form_page_route_update = 'route_setting_form'
+    form_page_route_create = 'page_index'
+    form_page_template = 'setting_edit.html'
+    form_page_new_title_format = 'New Setting'
 
     def before_update(self, data_dict):
         d = dict(data_dict)

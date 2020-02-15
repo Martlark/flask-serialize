@@ -237,23 +237,8 @@ to the parent `Survey` is provided as a `kwargs` parameter to the method.
             survey = Survey.query.get_or_404(survey_id)
             return Stat.request_create_form(survey_id=survey.id).as_dict
 
-Options
-=======
-
-Exclude fields
---------------
-
-List of model field names to not serialize at all.
-
-.. code:: python
-
-    exclude_serialize_fields = []
-    
-List of model field names to not serialize when return as json.
-
-.. code:: python
-
-    exclude_json_serialize_fields = []
+Writing and creating
+====================
 
 Verify write and create
 -----------------------
@@ -270,8 +255,8 @@ Override the mixin verify method to provide control and verification
 when updating and creating model items.  Simply raise an exception
 when there is a problem.  You can also modify `self` data before writing. See model example.
 
-Controlling delete
-------------------
+Delete
+------
 
 .. code:: python
 
@@ -284,8 +269,8 @@ Override the mixin can_delete to provide control over when an
 item can be deleted.  Simply raise an exception
 when there is a problem.  See model example.
 
-Updating fields specification
------------------------------
+Updating fields list
+--------------------
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
@@ -311,7 +296,10 @@ Example return JSON:
 .. code:: python
 
     class ExampleModel(db.Model, FlaskSerializeMixin):
-        update_fields = ['hat_size']
+        head_size = db.Column(db.Integer())
+        ear_width = db.Column(db.Integer())
+        update_fields = ['head_size', 'ear_width']
+        update_properties = ['hat_size']
 
         @property
         def hat_size(self):
@@ -320,7 +308,7 @@ Example return JSON:
 .. code:: JavaScript
 
     // result update return message
-    {message: "Updated", properties: {new_hat_size: 45.67} }
+    {message: "Updated", properties: {hat_size: 45.67} }
 
 This can be used to communicate from the model on the server to the JavaScript code
 interesting things from updates
@@ -329,11 +317,57 @@ Creation fields used when creating specification
 ------------------------------------------------
 
 List of model fields to be read from a form or json when creating an object.  Do not put foreign keys or primary
-keys here.
+keys here.  This is usually the same as update_fields.
 
 .. code:: python
 
     create_fields = []
+
+Update DateTime fields specification
+-------------------------------------
+
+The class methods: `request_update_form`, `request_create_form`, `request_update_json` will automatically stamp your
+model's timestamp fields using the `update_timestamp` class method.
+
+`timestamp_fields` is a list of fields on the model to be set when updating or creating
+with the value of `datetime.datetime.utcnow()`.  The default field names to update are: `['timestamp', 'updated']`.
+
+Example:
+
+.. code:: python
+
+
+    class ExampleModel(db.Model, FlaskSerializeMixin):
+        # ....
+        modified = db.Column(db.DateTime, default=datetime.utcnow)
+        timestamp_fields = ['modified']
+
+Override the timestamp default of `utcnow()` by replacing the `timestamp_stamper` class property with your
+own.  Example:
+
+.. code:: python
+
+    class ExampleModel(db.Model, FlaskSerializeMixin):
+        # ....
+        timestamp_stamper = datetime.datetime.now
+
+Filtering and sorting
+=====================
+
+Exclude fields
+--------------
+
+List of model field names to not serialize at all.
+
+.. code:: python
+
+    exclude_serialize_fields = []
+
+List of model field names to not serialize when return as json.
+
+.. code:: python
+
+    exclude_json_serialize_fields = []
 
 Filtering json list results
 ---------------------------
@@ -361,31 +395,6 @@ ascending use this example:
 
     order_by_field = 'id'
 
-Update DateTime fields specification
--------------------------------------
-
-`timestamp_fields` is a list of fields on the model to be set when updating or creating
-with the value of `datetime.datetime.utcnow()`.  The default field names to update are: `['timestamp', 'updated']`.
-
-Example:
-
-.. code:: python
-
-
-    class ExampleModel(db.Model, FlaskSerializeMixin):
-        # ....
-        modified = db.Column(db.DateTime, default=datetime.utcnow)
-        timestamp_fields = ['modified']
-
-Override the timestamp default of `utcnow()` by replacing the `timestamp_stamper` class property with your
-own.  Example:
-
-.. code:: python
-
-    class ExampleModel(db.Model, FlaskSerializeMixin):
-        # ....
-        timestamp_stamper = datetime.datetime.now
-
 Relationships list of property names that are to be included in serialization
 -----------------------------------------------------------------------------
 
@@ -397,7 +406,7 @@ In default operation relationships in models are not serialized.  Add any
 relationship property name here to be included in serialization.
 
 Serialization converters
-------------------------
+========================
 There are three built in converters to convert data from the database
 to a good format for serialization:
 
@@ -453,7 +462,7 @@ override the ``to_date_short`` method of the mixin.  Example:
 Conversion types when writing to database during update and create
 ------------------------------------------------------------------
 
-Add or replace to db conversion methods by using a list of dicts that specify conversions.
+Add or replace to db conversion methods by using a list of dicts that specify conversions for SQLAlchemy columns.
 
 Default is:
 
@@ -467,6 +476,9 @@ Default is:
 First the correct conversion will be attempted to be determined from the type of the updated or
 new field value.  Then, an introspection from the destination column type will be used to get the
 correct value converter type.
+
+@property values are converted using the `property_converter` class method.  Override or extend it
+for unexpected types.
 
 Notes:
 
@@ -535,22 +547,29 @@ admin group.  Properties or database fields can be used as the property name.
         :return: json object
         """
 
-``before_update(self, data_dict)``
+``before_update``
 
 .. code:: python
 
-    def dict_list(cls, query_result):
+    def before_update(cls, data_dict):
         """
         param: data_dict: a dictionary of new data to apply to the item
         return: the new data_dict to use when updating
         """
 
 Hook to call before any of `update_from_dict`, `request_update_form`, `request_update_json` is called so that
-you may alter or add update values before the item is written in preparation for update to db.  NOTE: copy data_dict to
+you may alter or add update values before the item is written to self in preparation for update to db.  NOTE: copy data_dict to
 a normal dict as it may be an Immutable type from the request object.
 
-        data_dict: a dictionary of new data to apply to the item
-        return: the new data_dict to use when updating
+Example, make sure active is 'n' if no value from a request.
+
+.. code:: python
+
+    def before_update(self, data_dict):
+        d = dict(data_dict)
+        d['active'] = d.get('active', 'n')
+        return d
+
 
 ``dict_list()``
 
@@ -562,82 +581,6 @@ a normal dict as it may be an Immutable type from the request object.
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
-
-``form_page(cls, item_id=None)``
-
-Do all the work for creating and editing items using a template and a wtf form.
-
-Prerequisites.
-
-Setup the class properties to use your form items.
-
-* `form` - WTForm Class - **Required**.
-* `form_route_create` - **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
-* `form_route_update` - **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
-* `form_template` - **Required**. Location of the template file to allow edit/add
-* `form_update_format` - Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
-* `form_create_format` - Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
-* `form_update_title_format` - Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
-* `form_create_title_format` - Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
-
-The routes must use item_id as the parameter for editing. Use no parameter when creating.
-
-Example:
-
-To allow the Setting class to use a template and WTForm to create and edit items.  In this example after create the index page is
-loaded, using the method `page_index`.  After update, the same page is reloaded with the new item values in the form.
-
-Add these property overrides to the Setting Class.
-
-.. code:: python
-
-    # form_page
-    form = EditForm
-    form_route_update = 'route_setting_form'
-    form_route_create = 'page_index'
-    form_template = 'setting_edit.html'
-    form_new_title_format = 'New Setting'
-
-Add this form.
-
-.. code:: python
-
-    class EditForm(FlaskForm):
-        value = StringField('value')
-
-Setup these routes.
-
-.. code:: python
-
-    @app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
-    @app.route('/setting_form_add', methods=['POST'])
-    def route_setting_form(item_id=None):
-        return Setting.form_page(item_id)
-
-Template.
-
-The template file needs to use WTForms to render the given form. `form`, `item`, `item_id` and `title` are passed as template
-variables.
-
-Example to update using POST, NOTE: only POST and GET are supported by form submit:
-
-.. code:: html
-
-    <h3>{{title}}</h3>
-    <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
-      <input name="value" value="{{form.value.data}}">
-      <input type="submit">
-    </form>
-
-Example to create using POST:
-
-.. code:: html
-
-    <h3>{{title}}</h3>
-    <form method="POST" submit="{{url_for('route_setting_form')}}">
-      <input name="value" value="{{form.value.data}}">
-      <input type="submit">
-    </form>
 
 ``json_list(query_result)``
 
@@ -753,9 +696,108 @@ Update a score item.
         else:
             return 'update failed'
 
+FormPageMixin
+=============
+
+Easily add WTF form page handling by including the FormPageMixin.
+
+Example:
+
+.. code:: python
+
+    from flask_serialize.form_page import FormPageMixin
+
+    class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
+        # ....
+
+
+This provides a method and class properties to quickly add a standard way of dealing with WTF forms on a Flask page.
+
+``form_page(cls, item_id=None)``
+
+Do all the work for creating and editing items using a template and a wtf form.
+
+Prerequisites.
+
+Setup the class properties to use your form items.
+
+============================= =============================================================================================================================
+Property                      Usage
+============================= =============================================================================================================================
+form_page_form                **Required**. WTForm Class name
+form_page_route_create        **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
+form_page_route_update        **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
+form_page_template            **Required**. Location of the template file to allow edit/add
+form_page_update_format       Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+form_page_create_format       Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
+form_page_update_title_format Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
+form_page_create_title_format Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
+============================= =============================================================================================================================
+
+The routes must use item_id as the parameter for editing. Use no parameter when creating.
+
+Example:
+
+To allow the Setting class to use a template and WTForm to create and edit items.  In this example after create the index page is
+loaded, using the method `page_index`.  After update, the same page is reloaded with the new item values in the form.
+
+Add these property overrides to the Setting Class.
+
+.. code:: python
+
+    # form_page
+    form_page_form = EditForm
+    form_page_route_update = 'route_setting_form'
+    form_page_route_create = 'page_index'
+    form_page_template = 'setting_edit.html'
+    form_page_new_title_format = 'New Setting'
+
+Add this form.
+
+.. code:: python
+
+    class EditForm(FlaskForm):
+        value = StringField('value')
+
+Setup these routes.
+
+.. code:: python
+
+    @app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
+    @app.route('/setting_form_add', methods=['POST'])
+    def route_setting_form(item_id=None):
+        return Setting.form_page(item_id)
+
+Template.
+
+The template file needs to use WTForms to render the given form. `form`, `item`, `item_id` and `title` are passed as template
+variables.
+
+Example to update using POST, NOTE: only POST and GET are supported by form submit:
+
+.. code:: html
+
+    <h3>{{title}}</h3>
+    <form method="POST" submit="{{url_for('route_setting_form', item_id=item.id)}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
+
+Example to create using POST:
+
+.. code:: html
+
+    <h3>{{title}}</h3>
+    <form method="POST" submit="{{url_for('route_setting_form')}}">
+      <input name="value" value="{{form.value.data}}">
+      <input type="submit">
+    </form>
+
+
 Release Notes
 -------------
 
+* 1.1.7 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.
 * 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add before_update hook.
 * 1.1.5 - Add previous_field_value array that is set during update.  Allows comparing new and previous values during verify.
 * 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.
