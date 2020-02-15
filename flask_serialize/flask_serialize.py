@@ -179,7 +179,7 @@ class FlaskSerializeMixin:
         return value
 
     @staticmethod
-    def relationship_converter(relationships):
+    def __relationship_converter(relationships):
         """
         convert a child SQLalchemy result set into a python
         dictionary list.
@@ -199,7 +199,7 @@ class FlaskSerializeMixin:
         if not props:
             props = EasyDict()
             props.converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
-                                'RELATIONSHIP': self.relationship_converter}
+                                'RELATIONSHIP': self.__relationship_converter}
 
             # SQL columns
             props.exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
