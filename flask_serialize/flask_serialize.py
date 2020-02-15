@@ -40,7 +40,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    version = '1.1.7'
+    version = '1.1.8'
 
     def before_update(self, data_dict):
         """
