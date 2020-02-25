@@ -40,7 +40,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    version = '1.1.8'
+    version = '1.1.9'
 
     def before_update(self, data_dict):
         """
@@ -176,12 +176,14 @@ class FlaskSerializeMixin:
             return list(value)
         if isinstance(value, complex):
             return str(value)
+        if isinstance(value, FlaskSerializeMixin):
+            return value.as_dict
         return value
 
     @staticmethod
     def __relationship_converter(relationships):
         """
-        convert a child SQLalchemy result set into a python
+        convert a child SQLAlchemy result set into a python
         dictionary list.
 
         :param relationships: SQLAlchemy result set

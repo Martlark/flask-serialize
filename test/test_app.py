@@ -36,8 +36,8 @@ def client():
     db.drop_all()
 
 
-def add_setting(client, key=random_string(), value='test-value'):
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+def add_setting(client, key=random_string(), value='test-value', number=0):
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, number=number))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     assert item
@@ -143,16 +143,20 @@ def test_get_user(client):
 def test_get_property(client):
     key = random_string()
     test_value = random_string()
+    flong_value = random_string()
     # test add a thing
-    add_setting(client, key=key, value=test_value)
+    add_setting(client, key=key, value=test_value, number=2)
     setting = Setting.query.filter_by(key=key).first()
+    setting.add_sub(flong_value)
     rv = client.get('/setting_get_key/{}'.format(key))
     assert rv.status_code == 200
     assert rv.json['prop_test'] == 'prop:' + test_value
     assert rv.json['prop_error'] == 'division by zero'
     assert rv.json['prop_datetime'] == str(setting.created).split('.')[0]
     assert rv.json['prop_test_dict'] == {'prop': test_value}
+    assert rv.json['prop_complex'] == str(complex(setting.number, setting.number * 2))
     assert set(rv.json['prop_set']) == set([3, 1, 2, 'four'])
+    assert rv.json['last_sub_setting']['flong'] == flong_value
 
 
 def test_relationships(client):
@@ -286,7 +290,7 @@ def test_excluded(client):
 
 def test_before_update(client):
     key = random_string()
-    test_value =random_string()
+    test_value = random_string()
     # create using post
     rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value=test_value, number=10))
     assert rv.status_code == 200
@@ -294,7 +298,7 @@ def test_before_update(client):
     assert item
     assert rv.json['value'] == test_value
     assert item.value == test_value
-    assert item.number == 0
+    assert item.number == 20
     # update using post - missing active should become 'n' via before_update hook
     new_value = random_string()
     rv = client.post('/setting_post/{}'.format(item.id),
@@ -303,6 +307,7 @@ def test_before_update(client):
     assert rv.json['message'] == 'Updated'
     item = Setting.query.get_or_404(item.id)
     assert 'n' == item.active
+
 
 def test_get_delete_put_post(client):
     key = random_string()
@@ -313,7 +318,7 @@ def test_get_delete_put_post(client):
     assert item
     assert rv.json['value'] == 'test-value'
     assert item.value == 'test-value'
-    assert item.number == 0
+    assert item.number == 20
     # update using post
     new_value = random_string()
     rv = client.post('/setting_post/{}'.format(item.id),
@@ -391,7 +396,7 @@ def test_create_update_delete(client):
     assert item
     assert item.value == value
     # test that number is not set on creation as it is not included in create_fields
-    assert item.number == 0
+    assert item.number == 20
     old_updated = item.updated
 
     new_value = random_string()
@@ -438,9 +443,9 @@ def test_form_page(client):
     assert item
     assert item.value == 'test-value'
     # test that number is not set on creation as it is not included in create_fields
-    assert item.number == 0
+    assert item.number == 20
     # set to new value
-    new_value=random_string()
+    new_value = random_string()
     rv = client.post('/setting_form_edit/{}'.format(item.id),
                      data=dict(id=item.id, setting_type='test', key=key, value=new_value, number=100))
     assert rv.status_code == 302

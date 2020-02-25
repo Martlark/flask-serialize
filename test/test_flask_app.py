@@ -239,7 +239,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 
     # serializer fields
     update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter', 'floaty']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter', 'floaty', 'number']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
@@ -263,6 +263,13 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     form_page_route_create = 'page_index'
     form_page_template = 'setting_edit.html'
     form_page_new_title_format = 'New Setting'
+
+    @property
+    def last_sub_setting(self):
+        if len(self.sub_settings)>0:
+            return self.sub_settings[-1]
+        else:
+            return None
 
     def before_update(self, data_dict):
         d = dict(data_dict)
@@ -290,6 +297,10 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
         return 'prop:' + self.value
 
     @property
+    def prop_complex(self):
+        return complex(self.number, self.number * 2)
+
+    @property
     def prop_error(self):
         return 'prop:' + str(1 / 0)
 
@@ -313,6 +324,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 
     def __repr__(self):
         return 'Setting {}'.format(self.key)
+
 
 class BadModel(FlaskSerializeMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
