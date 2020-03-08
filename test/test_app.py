@@ -246,7 +246,7 @@ def test_update_create_type_conversion(client):
         assert new_boolean == ss.boolean
 
 
-def test_covert_type(client):
+def test_convert_type(client):
     # add conversion type
     key = random_string()
     value = random_string()
