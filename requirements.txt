@@ -1,7 +1,7 @@
 wtforms
 flask
 SQLAlchemy
-EasyDict
+Permissive-Dict
 pytest
 flask-sqlalchemy
 flask-migrate

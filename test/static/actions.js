@@ -7,6 +7,34 @@ $(".index-delete").click(data => {
     );
 
 });
+$("#get_json_settings_all").click(data => {
+    $('#message').text('');
+
+    $.ajax(`/setting_get_all`
+    ).then(result => {
+            $('#json_settings_all').empty();
+            result.forEach(r => {
+                $('#json_settings_all').append(`<li>${JSON.stringify(r)}</li>`);
+            })
+        }
+    ).fail((xhr, textStatus, errorThrown) =>
+        $('#message').text(`${xhr.responseText || xhr.message}`)
+    );
+
+});
+
+function settingGet(id) {
+    $('#message').text('');
+
+    $.ajax(`/setting_get/${id}`
+    ).then(result => {
+            $('#json_setting').empty().text(JSON.stringify(result))
+        }
+    ).fail((xhr, textStatus, errorThrown) =>
+        $('#message').text(`${xhr.responseText || xhr.message}`)
+    );
+
+}
 
 $(".sub-setting-delete").click(data => {
     const id = $(data.target).data("id");

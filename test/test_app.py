@@ -151,7 +151,6 @@ def test_get_property(client):
     rv = client.get('/setting_get_key/{}'.format(key))
     assert rv.status_code == 200
     assert rv.json['prop_test'] == 'prop:' + test_value
-    assert rv.json['prop_error'] == 'division by zero'
     assert rv.json['prop_datetime'] == str(setting.created).split('.')[0]
     assert rv.json['prop_test_dict'] == {'prop': test_value}
     assert rv.json['prop_complex'] == str(complex(setting.number, setting.number * 2))
@@ -205,11 +204,10 @@ def test_column_conversion(client):
     # create
     key = random_string()
     value = '12.34'
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, splitter=value))
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, lob=value))
     # get
     item = Setting.query.filter_by(key=key).first()
-    assert item.as_dict['splitter'] == '12,34'
-    assert item.as_dict['zero'] == 'Error:"division by zero". Failed to convert [zero] type:VARCHAR(123)'
+    assert item.as_dict['lob'] == '12.34'
 
 
 def test_update_create_type_conversion(client):
@@ -268,8 +266,6 @@ def test_covert_type(client):
     item = Setting.query.filter_by(key=key).first()
     # explicit double conversion type
     assert int_value_to_convert * convert_multiple == item.number
-    # introspection conversion type
-    assert float_value_to_convert * convert_multiple == item.floaty
 
 
 def test_excluded(client):

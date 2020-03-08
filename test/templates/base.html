@@ -17,6 +17,23 @@
     {% endif %}
 </dd>
 {% endmacro %}
+{% macro render_form(form, submit) %}
+<form submit="{{submit}}" method="POST">
+    {% for field in form %}
+    <dt>{% if field.type != 'SubmitField' %}{{ field.label }}{%endif%}</dt>
+    <dd>{{ field(**kwargs)|safe }}
+        {% if field.errors %}
+        <ul class=errors>
+            {% for error in field.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </dd>
+    {% endfor %}
+</form>
+
+{% endmacro %}
 {% with messages = get_flashed_messages() %}
 {% if messages %}
 <ul class=flashes>
@@ -27,6 +44,7 @@
 {% endif %}
 {% endwith %}
 <h2>{{title}}</h2>
+<h6 id="message"></h6>
 {% block content %}{% endblock %}
 </body>
 <script

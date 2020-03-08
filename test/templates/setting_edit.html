@@ -1,14 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <a href="{{url_for('page_index')}}">Home</a>
-<form id="setting-{{item.id}}" name="setting-post" method="POST"
-      submit="{{url_for('route_setting_form', item_id=item.id)}}">
-    {{ render_field(form.key)}}
-    {{ render_field(form.setting_type)}}
-    {{ render_field(form.value)}}
-    {{ render_field(form.number)}}
-    <input type="submit">
-</form>
+{{render_form(form, submit=url_for('route_setting_form', item_id=item.id))}}
 <h3>Sub Settings</h3>
 <table>
     <thead>
@@ -42,5 +35,8 @@
     <label>Flong: <input name="flong" class="random-value" value="{{flong}}"></label>
     <input type="submit">
 </form>
-
+<p id="json_setting"></p>
+<script defer>
+    document.addEventListener("DOMContentLoaded",() => settingGet('{{item.id}}'))
+</script>
 {% endblock %}}

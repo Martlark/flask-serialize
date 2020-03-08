@@ -11,7 +11,7 @@ from flask_migrate import Migrate
 from flask_serialize.flask_serialize import FlaskSerializeMixin
 from flask_wtf import FlaskForm
 
-from wtforms import StringField, IntegerField, ValidationError, validators, HiddenField
+from wtforms import StringField, IntegerField, ValidationError, validators, HiddenField, DecimalField, SubmitField
 
 from flask_serialize.form_page import FormPageMixin
 
@@ -42,7 +42,8 @@ class EditForm(FlaskForm):
     key = StringField('key')
     value = StringField('value')
     number = IntegerField('number')
-
+    deci = DecimalField('deci')
+    submit = SubmitField()
 
 @app.route('/')
 @app.route('/<item_id>')
@@ -101,6 +102,18 @@ def route_setting_get_key(key):
     :return:
     """
     return Setting.query.filter_by(key=key).first().as_json
+
+
+@app.route('/setting_json_api/<int:id>', methods=['GET'])
+def route_setting_get_json_api_key(id):
+    """
+    get the first item that matches by a setting key
+
+    :param key:
+    :return:
+    """
+    item = Setting.query.get(id)
+    return item.json_api()
 
 
 # Delete a single item.
@@ -196,7 +209,8 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     boolean = db.Column(db.Boolean, default=True)
 
     update_properties = create_fields = update_fields = ['flong', 'boolean']
-    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'}, ]
+    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'},
+                     ]
 
     @staticmethod
     def one_day_ago():
@@ -231,31 +245,29 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     scheduled = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(10), default='Andrew')
     floaty = db.Column(db.Float(), default=1.1)
+    deci = db.Column(db.Numeric(2), default=0.0)
     # converter fields
-    splitter = db.Column(db.String(122), index=True)
-    zero = db.Column(db.String(123), default='10')
+    lob = db.Column(db.LargeBinary())
     # relationships
     sub_settings = db.relationship('SubSetting', backref='setting', cascade="all, delete-orphan")
 
     # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter', 'floaty', 'number']
+    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings']
     update_properties = ['prop_test']
     order_by_field = 'value'
-    # column splitter
-    column_type_converters = {'VARCHAR(122)': lambda v: ','.join(str(v).split('.'))}
-    # column zero
-    column_type_converters['VARCHAR(123)'] = lambda v: int(v) / 0
+    # lob
+    column_type_converters = {'LOB': lambda v: str(v)}
     # convert types
     scheduled_date_format = "%Y-%m-%d %H:%M:%S"
     convert_types = [
         {'type': bool, 'method': lambda v: 'y' if (type(v) == bool and v) or str(v).lower() == 'true' else 'n'},
         {'type': int, 'method': lambda n: int(n) * 2},
-        {'type': float, 'method': lambda n: float(n) * 2},
-        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
+        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)},
+        {'type': bytes, 'method': lambda v: v.encode()}
     ]
     # form_page
     form_page_form = EditForm
