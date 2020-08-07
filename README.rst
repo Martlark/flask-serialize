@@ -797,6 +797,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same
 * 1.1.9 - Allow FlaskSerializeMixin to be converted when a property value.
 * 1.1.8 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.
 * 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add before_update hook.

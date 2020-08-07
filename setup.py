@@ -15,7 +15,7 @@
 from codecs import open
 from setuptools import setup
 
-VERSION = '1.1.9'
+VERSION = '1.2.0'
 LONG_DESCRIPTION = open('README.rst', 'r', encoding='utf-8').read()
 
 setup(
@@ -60,5 +60,5 @@ setup(
 
     packages=['flask_serialize'],
     include_package_data=True,
-    install_requires=['EasyDict'],
+    install_requires=['Permissive-Dict'],
 )

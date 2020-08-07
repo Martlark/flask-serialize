@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from flask import request, jsonify, abort, current_app
-from easydict import EasyDict
+from permissive_dict import PermissiveDict
 
 
 class FlaskSerializeMixin:
@@ -30,7 +30,9 @@ class FlaskSerializeMixin:
     # add your own converters here
     column_type_converters = {}
     # add or replace conversion types
-    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'},
+                     {'type': bytes, 'method': lambda v: v.encode()}]
+    __json_types = [str, dict, list, int, float, bool]
     # properties or fields to return when updating using get or post
     update_properties = []
     # db is required to be set for updating/deletion functions
@@ -164,6 +166,7 @@ class FlaskSerializeMixin:
         * complex - just uses str conversion
         * datetime - short format as per to_date_short
         * set - becomes a list
+        * anything else not supported by json becomes a str
 
         override or extend this method to alter defaults
 
@@ -174,10 +177,10 @@ class FlaskSerializeMixin:
             return self.to_date_short(value)
         if isinstance(value, set):
             return list(value)
-        if isinstance(value, complex):
-            return str(value)
         if isinstance(value, FlaskSerializeMixin):
             return value.as_dict
+        if type(value) not in self.__json_types:
+            return str(value)
         return value
 
     @staticmethod
@@ -189,7 +192,22 @@ class FlaskSerializeMixin:
         :param relationships: SQLAlchemy result set
         :return: list of dict objects
         """
+        if isinstance(relationships, FlaskSerializeMixin):
+            return relationships.as_dict
         return [item.as_dict for item in relationships]
+
+    @staticmethod
+    def __lob_converter(value):
+        """
+        convert a LOB into a decoded string
+
+        :param value: lob to convert
+        :return: decoded string
+        """
+        if not value:
+            return ''
+        value = value.decode()
+        return value
 
     def __get_props(self):
         """
@@ -199,17 +217,26 @@ class FlaskSerializeMixin:
         """
         props = self.__model_props.get(self.__table__)
         if not props:
-            props = EasyDict()
-            props.converters = {'DATETIME': self.to_date_short, 'PROPERTY': self.property_converter,
-                                'RELATIONSHIP': self.__relationship_converter}
+            props = PermissiveDict(name=self.__table__.name)
+            props.converters = {'DATETIME': self.to_date_short,
+                                'PROPERTY': self.property_converter,
+                                'RELATIONSHIP': self.__relationship_converter,
+                                'NUMERIC': float,
+                                'DECIMAL': float,
+                                'LOB': self.__lob_converter,
+                                'BLOB': self.__lob_converter,
+                                'CLOB': self.__lob_converter,
+                                }
 
             # SQL columns
             props.exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
             field_list = self.__table__.columns
+            for f in field_list:
+                props.id = str(getattr(self, f.name, '')) if f.primary_key else props.id
             # add extra properties that are not from here
-            field_list += [EasyDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
+            field_list += [PermissiveDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
                            isinstance(getattr(self.__class__, p), property)]
-            field_list += [EasyDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
+            field_list += [PermissiveDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
             # add custom converters
             for converter, method in self.column_type_converters.items():
                 props.converters[converter] = method
@@ -217,8 +244,12 @@ class FlaskSerializeMixin:
             props.field_list = []
             for f in field_list:
                 if f.name not in props.exclude_fields:
-                    f.c_type = str(f.type)
+                    f.c_type = str(f.type).split('(')[0]
                     f.converter = props.converters.get(f.c_type)
+                    if not f.converter:
+                        # any non json supported types gets a str
+                        if getattr(f.type, 'python_type', None) not in self.__json_types:
+                            f.converter = str
                     props.field_list.append(f)
 
             self.__model_props[self.__table__] = props
@@ -255,6 +286,16 @@ class FlaskSerializeMixin:
                     d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
+    def json_api_dict(self):
+        props = self.__get_props()
+        d = dict(id=props.id, type=props.name, attributes=self.as_dict)
+        return jsonify(d)
+
+    def json_api_list(self, query_result):
+        dict_list = self.dict_list(query_result=query_result)
+        d = dict(data=[item.json_api_dict() for item in dict_list])
+        return jsonify(d)
+
     def __get_update_field_type(self, field, value):
         """
         get the type of the update to db field from cached table properties
@@ -270,12 +311,14 @@ class FlaskSerializeMixin:
                         return str
                     if f.c_type.startswith("INTEGER"):
                         return int
-                    if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL"):
+                    if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL") or f.c_type.startswith("NUMERIC"):
                         return float
                     if f.c_type.startswith("DATE") or f.c_type.startswith("TIME"):
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
                         return bool
+                    if 'LOB' in f.c_type:
+                        return bytes
 
         return None
 

@@ -1,18 +1,16 @@
 import os
+import random
 import string
 import time
 from datetime import datetime, timedelta
-import random
 
-from flask import Flask, redirect, url_for, render_template_string, abort, Response, request, render_template, flash
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, redirect, url_for, Response, request, render_template, flash
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import FlaskForm
+from wtforms import StringField, IntegerField, ValidationError, validators, DecimalField, SubmitField
 
 from flask_serialize.flask_serialize import FlaskSerializeMixin
-from flask_wtf import FlaskForm
-
-from wtforms import StringField, IntegerField, ValidationError, validators, HiddenField
-
 from flask_serialize.form_page import FormPageMixin
 
 app = Flask("test_app")
@@ -42,6 +40,8 @@ class EditForm(FlaskForm):
     key = StringField('key')
     value = StringField('value')
     number = IntegerField('number')
+    deci = DecimalField('deci')
+    submit = SubmitField()
 
 
 @app.route('/')
@@ -101,6 +101,18 @@ def route_setting_get_key(key):
     :return:
     """
     return Setting.query.filter_by(key=key).first().as_json
+
+
+@app.route('/setting_json_api/<int:id>', methods=['GET'])
+def route_setting_get_json_api_key(id):
+    """
+    get the first item that matches by a setting key
+
+    :param key:
+    :return:
+    """
+    item = Setting.query.get(id)
+    return item.json_api()
 
 
 # Delete a single item.
@@ -176,8 +188,8 @@ def route_setting_edit_add(item_id=None):
 @app.route('/setting_form_edit/<int:item_id>', methods=['POST', 'GET'])
 @app.route('/setting_form_add', methods=['POST'])
 def route_setting_form(item_id=None):
-    return Setting.form_page(item_id)
-
+    new_item = Setting.form_page(item_id)
+    return new_item
 
 # =========================
 # MODELS
@@ -192,11 +204,13 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     sub_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
+
     flong = db.Column(db.String(120), index=True, default='flang')
     boolean = db.Column(db.Boolean, default=True)
 
     update_properties = create_fields = update_fields = ['flong', 'boolean']
-    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'}, ]
+    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'},
+                     ]
 
     @staticmethod
     def one_day_ago():
@@ -218,6 +232,12 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     timestamp_stamper = one_day_ago
 
 
+class Single(FlaskSerializeMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    wang = db.Column(db.String(120), default='wang')
+    setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
+
+
 class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -231,31 +251,30 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     scheduled = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(10), default='Andrew')
     floaty = db.Column(db.Float(), default=1.1)
+    deci = db.Column(db.Numeric(2), default=0.0)
     # converter fields
-    splitter = db.Column(db.String(122), index=True)
-    zero = db.Column(db.String(123), default='10')
+    lob = db.Column(db.LargeBinary())
     # relationships
     sub_settings = db.relationship('SubSetting', backref='setting', cascade="all, delete-orphan")
+    single = db.relationship('Single', backref='setting', uselist=False, cascade="all, delete-orphan")
 
     # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'splitter', 'floaty', 'number']
+    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
+    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
-    relationship_fields = ['sub_settings']
+    relationship_fields = ['sub_settings', 'single']
     update_properties = ['prop_test']
     order_by_field = 'value'
-    # column splitter
-    column_type_converters = {'VARCHAR(122)': lambda v: ','.join(str(v).split('.'))}
-    # column zero
-    column_type_converters['VARCHAR(123)'] = lambda v: int(v) / 0
+    # lob
+    column_type_converters = {'LOB': lambda v: str(v)}
     # convert types
     scheduled_date_format = "%Y-%m-%d %H:%M:%S"
     convert_types = [
         {'type': bool, 'method': lambda v: 'y' if (type(v) == bool and v) or str(v).lower() == 'true' else 'n'},
         {'type': int, 'method': lambda n: int(n) * 2},
-        {'type': float, 'method': lambda n: float(n) * 2},
-        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)}
+        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)},
+        {'type': bytes, 'method': lambda v: v.encode()}
     ]
     # form_page
     form_page_form = EditForm
@@ -266,7 +285,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 
     @property
     def last_sub_setting(self):
-        if len(self.sub_settings)>0:
+        if len(self.sub_settings) > 0:
             return self.sub_settings[-1]
         else:
             return None
@@ -291,6 +310,9 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 
         if len(self.setting_type or '') < 2:
             raise ValidationError('Insufficient setting type')
+
+        if create:
+            self.add_single('flang')
 
     @property
     def prop_test(self):
@@ -321,6 +343,11 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
         db.session.add(sub)
         db.session.commit()
         return sub
+
+    def add_single(self, flong):
+        sing = Single(setting=self, wang=flong)
+        db.session.add(sing)
+        return sing
 
     def __repr__(self):
         return 'Setting {}'.format(self.key)
