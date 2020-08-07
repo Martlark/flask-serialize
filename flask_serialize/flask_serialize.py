@@ -192,6 +192,8 @@ class FlaskSerializeMixin:
         :param relationships: SQLAlchemy result set
         :return: list of dict objects
         """
+        if isinstance(relationships, FlaskSerializeMixin):
+            return relationships.as_dict
         return [item.as_dict for item in relationships]
 
     @staticmethod
