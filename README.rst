@@ -379,7 +379,9 @@ The filter consists of one or more properties in the json result and
 the value that it must match.  Filter items will match against the
 first prop_filter property to exactly equal the value.
 
-Example:
+NOTE: The filter is not applied with PUT, single GET or DELETE.
+
+Example to only return dogs:
 
 .. code:: python
 
@@ -518,8 +520,9 @@ POST   updates an item from form data using `item_id`. Returns json response of 
 
 On error returns a response of 'error message' with http status code of 400.
 
-Set the `user` parameter to restrict a certain user.  Assumes that a model
-relationship of user exists.
+Set the `user` parameter to restrict a certain user.  By default uses the
+relationship of `user`.  Set another relationship field by setting the `__user_field` to the name of the
+relationship.
 
 Prop filters is a dictionary of `property name`:`value` pairs.  Ie: {'group': 'admin'} to restrict list to the
 admin group.  Properties or database fields can be used as the property name.
@@ -797,7 +800,8 @@ Example to create using POST:
 Release Notes
 -------------
 
-* 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same
+* 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
+* 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.
 * 1.1.9 - Allow FlaskSerializeMixin to be converted when a property value.
 * 1.1.8 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.
 * 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add before_update hook.
