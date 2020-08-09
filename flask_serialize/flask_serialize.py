@@ -33,6 +33,8 @@ class FlaskSerializeMixin:
     convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'},
                      {'type': bytes, 'method': lambda v: v.encode()}]
     __json_types = [str, dict, list, int, float, bool]
+    # default field name when restricting to a particular user
+    fs_user_field = 'user'
     # properties or fields to return when updating using get or post
     update_properties = []
     # db is required to be set for updating/deletion functions
@@ -42,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    version = '1.1.9'
+    __version__ = '1.2.1'
 
     def before_update(self, data_dict):
         """
@@ -69,11 +71,15 @@ class FlaskSerializeMixin:
         return the object with the given id that is owned by the given user
 
         :param item_id: object id
-        :param user: the user to use as a filter, assumes relationship name is user
+        :param user: the user to use as a filter, default relationship name is user (fs_user_field)
         :return: the object
         :throws: 404 exception if not found
         """
-        return cls.query.filter_by(id=item_id, user=user).first_or_404()
+
+        kwargs = {'id': item_id}
+        if user:
+            kwargs[cls.fs_user_field] = user
+        return cls.query.filter_by(**kwargs).first_or_404()
 
     @classmethod
     def json_filter_by(cls, **kwargs):
@@ -492,7 +498,9 @@ class FlaskSerializeMixin:
         elif request.method == 'GET':
             # no item id get a list of items
             if user:
-                result = cls.query.filter_by(user=user)
+                kwargs = {}
+                kwargs[cls.fs_user_field]=user
+                result = cls.query.filter_by(**kwargs)
             else:
                 result = cls.query.all()
             return cls.json_list(result, prop_filters=prop_filters)

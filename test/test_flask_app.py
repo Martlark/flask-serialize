@@ -62,7 +62,7 @@ def page_index(item_id=None):
 @app.route('/setting_get/<int:item_id>', methods=['GET'])
 @app.route('/setting_user/<user>', methods=['GET'])
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
-def route_setting_get_delete_put_post(item_id=None, user=None):
+def route_setting_get_delete_put_post(item_id=None, user='Andrew'):
     key = request.args.get('key')
     if key and request.method == 'GET':
         return Setting.get_delete_put_post(item_id, prop_filters={"key": key})
@@ -72,7 +72,7 @@ def route_setting_get_delete_put_post(item_id=None, user=None):
 @app.route('/sub_setting_delete/<int:item_id>', methods=['DELETE'])
 @app.route('/sub_setting_put/<int:item_id>', methods=['PUT', 'POST'])
 @app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
-def route_sub_setting_get_delete_put_post(item_id=None, user=None):
+def route_sub_setting_get_delete_put_post(item_id=None, user='fake'):
     return SubSetting.get_delete_put_post(item_id, user)
 
 
@@ -205,9 +205,11 @@ class SubSetting(FlaskSerializeMixin, db.Model):
 
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
 
+    fake_user = db.Column(db.String(120), index=True, default='fake')
     flong = db.Column(db.String(120), index=True, default='flang')
     boolean = db.Column(db.Boolean, default=True)
 
+    fs_user_field = 'fake_user'
     update_properties = create_fields = update_fields = ['flong', 'boolean']
     convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'},
                      ]
