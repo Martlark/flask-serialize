@@ -521,7 +521,7 @@ POST   updates an item from form data using `item_id`. Returns json response of 
 On error returns a response of 'error message' with http status code of 400.
 
 Set the `user` parameter to restrict a certain user.  By default uses the
-relationship of `user`.  Set another relationship field by setting the `__user_field` to the name of the
+relationship of `user`.  Set another relationship field by setting the `fs_user_field` to the name of the
 relationship.
 
 Prop filters is a dictionary of `property name`:`value` pairs.  Ie: {'group': 'admin'} to restrict list to the
