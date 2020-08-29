@@ -197,7 +197,7 @@ def test_can_access_update(client):
     excluded_id = item.id
     key = random_string()
     value = random_string()
-    client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, user='Robert'))
     key = random_string()
     value = random_string()
     client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
@@ -219,6 +219,10 @@ def test_can_access_update(client):
     rv = client.put('/setting_update/{}'.format(excluded_id), json=dict(active=False))
     assert rv.status_code != 200
     assert b'Error updating item: Update not allowed.  Magic value!' == rv.data
+    result_list = Setting.query_by_access(setting_type='test')
+    assert len(result_list) == 2
+    result_list = Setting.query_by_access(user='Andrew', setting_type='test')
+    assert len(result_list) == 1 # no robert
 
 
 def test_can_delete(client):

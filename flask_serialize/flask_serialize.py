@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.3.0'
+    __version__ = '1.3.1'
 
     def before_update(self, data_dict):
         """
@@ -66,9 +66,29 @@ class FlaskSerializeMixin:
         return str(d).split('.')[0]
 
     @classmethod
-    def get_by_user_or_404(cls, item_id, user):
+    def query_by_access(cls, user=None, **kwargs):
         """
-        return the object with the given id that is owned by the given user
+        filter a query result to that optionally owned by the given user and
+        can_access()
+
+        :param query: SQLAlchemy query
+        :param user: the user to use as a filter, default relationship name is user (fs_user_field)
+        :return: a list of query results
+        """
+
+        if user:
+            kwargs[cls.fs_user_field] = user
+
+        query = cls.query.filter_by(**kwargs)
+        items = [item for item in query if item.can_access()]
+
+        return items
+
+    @classmethod
+    def get_by_user_or_404(cls, item_id, user=None):
+        """
+        return the object with the given primary key id that is optionally owned by the given user and
+        can_access()
 
         :param item_id: object primary key, id
         :param user: the user to use as a filter, default relationship name is user (fs_user_field)
@@ -80,7 +100,8 @@ class FlaskSerializeMixin:
         if user:
             kwargs[cls.fs_user_field] = user
         item = cls.query.filter_by(**kwargs).first_or_404()
-        item.can_access()
+        if not item.can_access():
+            abort(404)
         return item
 
     @classmethod
@@ -471,17 +492,17 @@ class FlaskSerializeMixin:
             if field in data_dict:
                 setattr(self, field, self.__convert_value(field, data_dict[field]))
 
-    def can_access(self, accessor=None):
+    def can_access(self):
         """
-        return True if accessor is allowed to access, return false if not
+        return True if allowed to access, return false if not
 
         :return: True/False
         """
         return True
 
-    def can_update(self, updater=None):
+    def can_update(self):
         """
-        return True if current user is allowed to update, raise an error if not allowed
+        return True if allowed to update, raise an error if not allowed
 
         :return: True if can update
         """
