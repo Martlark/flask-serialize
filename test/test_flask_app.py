@@ -4,7 +4,7 @@ import string
 import time
 from datetime import datetime, timedelta
 
-from flask import Flask, redirect, url_for, Response, request, render_template, flash
+from flask import Flask, redirect, url_for, Response, request, render_template, flash, abort
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -296,6 +296,18 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
         d = dict(data_dict)
         d['active'] = d.get('active', 'n')
         return d
+
+    # checks if Flask-Serialize can access
+    def can_access(self):
+        if self.value == '123456789':
+            return False
+        return True
+
+    # checks if Flask-Serialize can access
+    def can_update(self):
+        if not self.can_access():
+            raise Exception('Update not allowed.  Magic value!')
+        return True
 
     # checks if Flask-Serialize can delete
     def can_delete(self):

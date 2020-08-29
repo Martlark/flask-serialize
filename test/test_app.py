@@ -1,3 +1,4 @@
+import json
 import random
 import string
 import time
@@ -184,6 +185,40 @@ def test_prop_filters(client):
     assert 200 == rv.status_code
     assert 1 == len(rv.json)
     assert filter_key == rv.json[0]['key']
+
+
+def test_can_access_update(client):
+    # create
+    excluded_key = random_string()
+    value = '123456789'
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=excluded_key, value=value))
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=excluded_key).first()
+    excluded_id = item.id
+    key = random_string()
+    value = random_string()
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+    key = random_string()
+    value = random_string()
+    client.post('/setting_add', data=dict(setting_type='test', key=key, value=value))
+
+    # one value is excluded
+    with app.app_context():
+        r = Setting.json_first(key=excluded_key)
+        assert r.status_code == 200
+        assert r.response == [b'{}\n']
+    # value is excluded from dict list
+    query = Setting.query.filter_by(setting_type='test')
+    items = Setting.dict_list(query)
+    assert len(items) == 2
+    with app.app_context():
+        r = Setting.json_list(query)
+        l = json.loads(r.response[0])
+        assert len(l) == 2
+    # try to update
+    rv = client.put('/setting_update/{}'.format(excluded_id), json=dict(active=False))
+    assert rv.status_code != 200
+    assert b'Error updating item: Update not allowed.  Magic value!' == rv.data
 
 
 def test_can_delete(client):

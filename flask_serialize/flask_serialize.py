@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.2.1'
+    __version__ = '1.3.0'
 
     def before_update(self, data_dict):
         """
@@ -70,7 +70,7 @@ class FlaskSerializeMixin:
         """
         return the object with the given id that is owned by the given user
 
-        :param item_id: object id
+        :param item_id: object primary key, id
         :param user: the user to use as a filter, default relationship name is user (fs_user_field)
         :return: the object
         :throws: 404 exception if not found
@@ -79,7 +79,9 @@ class FlaskSerializeMixin:
         kwargs = {'id': item_id}
         if user:
             kwargs[cls.fs_user_field] = user
-        return cls.query.filter_by(**kwargs).first_or_404()
+        item = cls.query.filter_by(**kwargs).first_or_404()
+        item.can_access()
+        return item
 
     @classmethod
     def json_filter_by(cls, **kwargs):
@@ -98,10 +100,10 @@ class FlaskSerializeMixin:
         return an item in json format using the item_id as a primary key
 
         :param item_id: {primary key} the primary key of the item to get
-        :return: flask response with json item, or {} if not found
+        :return: flask response with json item, or {} if not found or no access
         """
         item = cls.query.get(item_id)
-        if not item:
+        if not item or not item.can_access():
             return jsonify({})
         return item.as_json
 
@@ -110,13 +112,14 @@ class FlaskSerializeMixin:
         """
         Return a list in json format from the query_result.
         When order_by_field is defined sort by that field in ascending order.
+        Only returns those that can_access()
 
         :param query_result: sql alchemy query result
         :param prop_filters: dictionary of filter elements to restrict results
         :return: flask response with json list of results
         """
         # ascending
-        items = [item.__as_exclude_json_dict() for item in query_result]
+        items = [item.__as_exclude_json_dict() for item in query_result if item.can_access()]
 
         if len(items) > 0 and cls.order_by_field:
             items = sorted(items, key=lambda i: i[cls.order_by_field])
@@ -141,16 +144,17 @@ class FlaskSerializeMixin:
         """
         return a list of dictionary objects from the sql query result
         without exclude_serialize_fields fields
+        for only those than can_access()
 
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
-        return [item.__as_exclude_json_dict() for item in query_result]
+        return [item.__as_exclude_json_dict() for item in query_result if item.can_access()]
 
     @property
     def as_json(self):
         """
-        the sql object as a json object without the excluded fields
+        the sql object as a json response without the excluded fields
 
         :return: flask response json object
         """
@@ -293,11 +297,23 @@ class FlaskSerializeMixin:
         return d
 
     def json_api_dict(self):
+        """
+        start of returning as JSON_API.  Unused
+
+        :return: {id, name, attributes(dict)}
+        """
         props = self.__get_props()
         d = dict(id=props.id, type=props.name, attributes=self.as_dict)
         return jsonify(d)
 
     def json_api_list(self, query_result):
+        """
+        start of returning as JSON_API.  Unused
+        returns a list of items where can_access() from query_result
+
+        :param query_result:
+        :return: list of {id, name, attributes(dict)}
+        """
         dict_list = self.dict_list(query_result=query_result)
         d = dict(data=[item.json_api_dict() for item in dict_list])
         return jsonify(d)
@@ -388,7 +404,7 @@ class FlaskSerializeMixin:
         """
         update/create the item using form data from the request object
         only present fields are updated
-        throws error if validation fails
+        throws error if validation or can_update() fails
 
         :return: True when complete
         """
@@ -396,6 +412,8 @@ class FlaskSerializeMixin:
             return self.request_update_json()
         else:
             self.update_from_dict(request.form)
+        if not self.can_update():
+            return False
         self.verify()
         self.update_timestamp()
         self.db.session.add(self)
@@ -405,11 +423,13 @@ class FlaskSerializeMixin:
     def request_update_json(self):
         """
         Update an item from request json data or PUT params, probably from a PUT or PATCH.
-        Throws exception if not valid
+        Throws exception if not valid or can_update() fails
 
         :return: True if item updated
         """
 
+        if not self.can_update():
+            return False
         try:
             json_data = request.get_json(force=True)
         except Exception as e:
@@ -451,13 +471,33 @@ class FlaskSerializeMixin:
             if field in data_dict:
                 setattr(self, field, self.__convert_value(field, data_dict[field]))
 
+    def can_access(self, accessor=None):
+        """
+        return True if accessor is allowed to access, return false if not
+
+        :return: True/False
+        """
+        return True
+
+    def can_update(self, updater=None):
+        """
+        return True if current user is allowed to update, raise an error if not allowed
+
+        :return: True if can update
+        """
+        return self.can_access()
+
     def can_delete(self):
         """
-        raise an exception if deletion is not allowed
+        raise an exception if deletion is not allowed or True
+        if deletion is allowed.  Default is can_update() returns false
+        aborts with 403
 
-        :return:
+        :return: True if can delete
         """
-        pass
+        if not self.can_update():
+            abort(403)
+        return True
 
     def verify(self, create=False):
         """
@@ -485,8 +525,11 @@ class FlaskSerializeMixin:
         """
         get, delete, post, put with JSON/FORM a single model item
 
+        * any access uses can_access() to check for accessibility
+        * any update uses can_update() to check for update permission
+
         :param item_id: the primary key of the item - if none and method is 'GET' returns all items
-        :param user: user to user as query filter.
+        :param user: user to use as query filter.
         :param prop_filters: dictionary of key:value pairs to limit results to.
         :return: json object: {message}, or the item.  throws error when problem
         """
@@ -495,6 +538,8 @@ class FlaskSerializeMixin:
             item = cls.get_by_user_or_404(item_id, user=user)
         elif item_id is not None:
             item = cls.query.get_or_404(item_id)
+            if not item.can_access():
+                abort(404)
         elif request.method == 'GET':
             # no item id get a list of items
             if user:
@@ -533,12 +578,14 @@ class FlaskSerializeMixin:
     @classmethod
     def json_first(cls, **kwargs):
         """
-        return the first result in json format using the filter_by arguments, or {} if no result
+        return the first result in json response format using the filter_by arguments, or {} if no result
+        or not can_access()
 
         :param kwargs: SQLAlchemy query.filter_by arguments
         :return: flask response json item or {} if no result
         """
         item = cls.query.filter_by(**kwargs).first()
-        if not item:
+        if not item or not item.can_access():
             return jsonify({})
+
         return item.as_json

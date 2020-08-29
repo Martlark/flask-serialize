@@ -240,6 +240,62 @@ to the parent `Survey` is provided as a `kwargs` parameter to the method.
 Writing and creating
 ====================
 
+When using any of the convenience methods to update, create or delete an object.  These properties and
+methods control how flask-serialize handles the operation.
+
+Updating from a form or json
+----------------------------
+
+.. code:: python
+
+    def request_update_json():
+        """
+        Update an item from request json data or PUT params, probably from a PUT or PATCH.
+        Throws exception if not valid
+
+        :return: True if item updated
+
+        """
+
+Example.  To update a Message object using a GET, call this method with the parameters to update as request arguments.  ie:
+
+/update_message/12/?body=hello&subject=something
+
+.. code:: python
+
+        @route('/update_message/<int:message_id>/')
+        def update_message(message_id)
+            message = Message.get_by_user_or_404(message_id, user=current_user)
+            if message.request_update_json():
+                return 'Updated'
+
+
+.. code:: python
+
+    def request_update_json():
+        """
+        Update an item from request json data or PUT params, probably from a PUT or PATCH.
+        Throws exception if not valid
+
+        :return: True if item updated
+
+        """
+
+Example.  To update a Message using a POST, call this method with the parameters to update as request arguments.  ie:
+
+/update_message/12/
+
+form data {body="hello", subject="something"}
+
+.. code:: python
+
+        @route('/update_message/<int:message_id>/', methods=['POST'])
+        def update_message(message_id)
+            message = Message.get_by_user_or_404(message_id, user=current_user)
+            if message.request_update_form():
+                return 'Updated'
+
+
 Verify write and create
 -----------------------
 
@@ -267,7 +323,36 @@ Delete
 
 Override the mixin can_delete to provide control over when an
 item can be deleted.  Simply raise an exception
-when there is a problem.  See model example.
+when there is a problem.   By default `can_delete`
+calls `can_update` unless overridden.  See model example.
+
+Update
+------
+
+.. code:: python
+
+    def can_update(self):
+        """
+        raise exception if item cannot be updated
+        """
+
+Override the mixin `can_update` to provide control over when an
+item can be updated.  Simply raise an exception
+when there is a problem or return False.  By default `can_update`
+uses the result from `can_access` unless overridden.
+
+Access
+------
+
+.. code:: python
+
+    def can_access(self):
+        """
+        return False if item can't be accessed
+        """
+
+Override the mixin `can_access` to provide control over when an
+item can be read or accessed.  Return False to exclude from results.
 
 Updating fields list
 --------------------
@@ -390,7 +475,8 @@ Example to only return dogs:
 Sorting json list results
 -------------------------
 
-Json result lists can be sorted by using the `order_by_field` or the `order_by_field_desc` properties.  To sort by id
+Json result lists can be sorted by using the `order_by_field` or the `order_by_field_desc` properties.  The results
+are sorted after the query is converted to JSON.  As such you can use any property from a class to sort. To sort by id
 ascending use this example:
 
 .. code:: python
@@ -405,7 +491,9 @@ Relationships list of property names that are to be included in serialization
     relationship_fields = []
 
 In default operation relationships in models are not serialized.  Add any
-relationship property name here to be included in serialization.
+relationship property name here to be included in serialization.  NOTE: take care
+to not include circular relationships.  Flask-Serialize does not check for circular
+relationships.
 
 Serialization converters
 ========================
@@ -800,6 +888,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.3.0 - Add can_update and can_access methods for controlling update and access.
 * 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
 * 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.
 * 1.1.9 - Allow FlaskSerializeMixin to be converted when a property value.
