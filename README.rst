@@ -323,7 +323,36 @@ Delete
 
 Override the mixin can_delete to provide control over when an
 item can be deleted.  Simply raise an exception
-when there is a problem.  See model example.
+when there is a problem.   By default `can_delete`
+calls `can_update` unless overridden.  See model example.
+
+Update
+------
+
+.. code:: python
+
+    def can_update(self):
+        """
+        raise exception if item cannot be updated
+        """
+
+Override the mixin `can_update` to provide control over when an
+item can be updated.  Simply raise an exception
+when there is a problem or return False.  By default `can_update`
+uses the result from `can_access` unless overridden.
+
+Access
+------
+
+.. code:: python
+
+    def can_access(self):
+        """
+        return False if item can't be accessed
+        """
+
+Override the mixin `can_access` to provide control over when an
+item can be read or accessed.  Return False to exclude from results.
 
 Updating fields list
 --------------------
