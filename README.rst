@@ -483,6 +483,21 @@ ascending use this example:
 
     order_by_field = 'id'
 
+Filtering query results using can_access and user.
+--------------------------------------------------
+
+The `query_by_access` method can be used to filter a SQLAlchemy result set so that
+the `user` property and `can_access` method are used to restrict to allowable items.
+
+Example:
+
+.. code:: python
+
+    result_list = Setting.query_by_access(user='Andrew', setting_type='test')
+
+Any keyword can be supplied after `user` to be passed to `filter_by` method of `query`.
+
+
 Relationships list of property names that are to be included in serialization
 -----------------------------------------------------------------------------
 
@@ -888,6 +903,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.3.1 - Fix incorrect method signatures.  Add query_by_access method.
 * 1.3.0 - Add can_update and can_access methods for controlling update and access.
 * 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
 * 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.
