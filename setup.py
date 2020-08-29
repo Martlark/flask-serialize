@@ -50,13 +50,14 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
 
         'Operating System :: POSIX',
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Operating System :: Microsoft :: Windows',
     ],
-    keywords='flask sqlalchemey serialize serialization serialise',
+    keywords='flask sqlalchemy serialize serialization serialise',
 
     packages=['flask_serialize'],
     include_package_data=True,
