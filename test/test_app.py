@@ -187,6 +187,17 @@ def test_prop_filters(client):
     assert filter_key == rv.json[0]['key']
 
 
+def test_private_field(client):
+    # create
+    excluded_key = 'private'
+    value = '123789'
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=excluded_key, value=value))
+
+    # value is excluded from dict list
+    query = Setting.query.filter_by(setting_type='test')
+    items = Setting.dict_list(query)
+    assert 'key' not in items[0]
+
 def test_can_access_update(client):
     # create
     excluded_key = random_string()

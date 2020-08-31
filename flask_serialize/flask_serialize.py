@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.3.1'
+    __version__ = '1.4.0'
 
     def before_update(self, data_dict):
         """
@@ -181,14 +181,19 @@ class FlaskSerializeMixin:
         """
         return jsonify(self.__as_exclude_json_dict())
 
+    def fs_private_field(self, field_name):
+        return False
+
     def __as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
         without fields in exclude_json_serialize_fields and exclude_serialize_fields
+        excludes any private_field
 
         :return: dictionary
         """
-        return {k: v for k, v in self.as_dict.items() if k not in self.exclude_json_serialize_fields}
+        return {k: v for k, v in self.as_dict.items() if
+                k not in self.exclude_json_serialize_fields}
 
     def property_converter(self, value):
         """
@@ -303,18 +308,19 @@ class FlaskSerializeMixin:
         d = {}
 
         for c in self.__get_props().field_list:
-            try:
-                d[c.name] = v = getattr(self, c.name, '')
-            except Exception as e:
-                v = str(e)
-
-            if v is None:
-                d[c.name] = ''
-            elif c.converter:
+            if not self.fs_private_field(c.name):
                 try:
-                    d[c.name] = c.converter(v)
+                    d[c.name] = v = getattr(self, c.name, '')
                 except Exception as e:
-                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
+                    v = str(e)
+
+                if v is None:
+                    d[c.name] = ''
+                elif c.converter:
+                    try:
+                        d[c.name] = c.converter(v)
+                    except Exception as e:
+                        d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
     def json_api_dict(self):
@@ -565,7 +571,7 @@ class FlaskSerializeMixin:
             # no item id get a list of items
             if user:
                 kwargs = {}
-                kwargs[cls.fs_user_field]=user
+                kwargs[cls.fs_user_field] = user
                 result = cls.query.filter_by(**kwargs)
             else:
                 result = cls.query.all()

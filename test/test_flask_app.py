@@ -328,6 +328,11 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
         if create:
             self.add_single('flang')
 
+    def fs_private_field(self, field_name):
+        if field_name.upper() == 'KEY' and self.key == 'private':
+            return True
+        return False
+
     @property
     def prop_test(self):
         return 'prop:' + self.value

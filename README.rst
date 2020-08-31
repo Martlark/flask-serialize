@@ -354,6 +354,24 @@ Access
 Override the mixin `can_access` to provide control over when an
 item can be read or accessed.  Return False to exclude from results.
 
+Private fields
+--------------
+
+Fields can be made private for certain reasons by overriding the `fs_private_field` method
+and returning `True` if the field is to be private.
+
+Example:
+
+To exclude private fields when a user is not the admin.
+
+.. code:: python
+
+    def fs_private_field(self, field_name):
+        if not is_admin_user() and field_name.upper().startswith('PRIVATE_'):
+            return True
+        return False
+
+
 Updating fields list
 --------------------
 
@@ -903,6 +921,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.4.0 - Add fs_private_field method.
 * 1.3.1 - Fix incorrect method signatures.  Add query_by_access method.
 * 1.3.0 - Add can_update and can_access methods for controlling update and access.
 * 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
