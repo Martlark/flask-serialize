@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.4.0'
+    __version__ = '1.4.1'
 
     def before_update(self, data_dict):
         """
@@ -443,6 +443,8 @@ class FlaskSerializeMixin:
             return False
         self.verify()
         self.update_timestamp()
+        if not self.db:
+            raise Exception('FlaskSerializeMixin property "db" is not set')
         self.db.session.add(self)
         self.db.session.commit()
         return True
@@ -468,6 +470,8 @@ class FlaskSerializeMixin:
 
         self.verify()
         self.update_timestamp()
+        if not self.db:
+            raise Exception('FlaskSerializeMixin property "db" is not set')
         self.db.session.add(self)
         self.db.session.commit()
         return True
@@ -570,8 +574,7 @@ class FlaskSerializeMixin:
         elif request.method == 'GET':
             # no item id get a list of items
             if user:
-                kwargs = {}
-                kwargs[cls.fs_user_field] = user
+                kwargs = {cls.fs_user_field: user}
                 result = cls.query.filter_by(**kwargs)
             else:
                 result = cls.query.all()
@@ -616,3 +619,14 @@ class FlaskSerializeMixin:
             return jsonify({})
 
         return item.as_json
+
+
+def FlaskSerialize(db=None):
+    """
+    return the FlaskSerializeMixin mixin class, optionally initialize the db values
+
+    :param db: (optional) SQLAlchemy db instance
+    :return: FlaskSerializeMixin mixin
+    """
+    FlaskSerializeMixin.db = db
+    return FlaskSerializeMixin

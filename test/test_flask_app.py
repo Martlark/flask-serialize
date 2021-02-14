@@ -10,7 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, IntegerField, ValidationError, validators, DecimalField, SubmitField
 
-from flask_serialize.flask_serialize import FlaskSerializeMixin
+from flask_serialize.flask_serialize import FlaskSerialize
 from flask_serialize.form_page import FormPageMixin
 
 app = Flask("test_app")
@@ -19,6 +19,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+fs_mixin = FlaskSerialize(db)
 
 
 # =========================
@@ -191,14 +192,13 @@ def route_setting_form(item_id=None):
     new_item = Setting.form_page(item_id)
     return new_item
 
+
 # =========================
 # MODELS
 # =========================
 
-FlaskSerializeMixin.db = db
 
-
-class SubSetting(FlaskSerializeMixin, db.Model):
+class SubSetting(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created = db.Column(db.DateTime, default=datetime.utcnow)
     sub_updated = db.Column(db.DateTime, default=datetime.utcnow)
@@ -234,13 +234,13 @@ class SubSetting(FlaskSerializeMixin, db.Model):
     timestamp_stamper = one_day_ago
 
 
-class Single(FlaskSerializeMixin, db.Model):
+class Single(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     wang = db.Column(db.String(120), default='wang')
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
 
 
-class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
+class Setting(fs_mixin, FormPageMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     setting_type = db.Column(db.String(120), index=True, default='misc')
@@ -372,7 +372,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
         return 'Setting {}'.format(self.key)
 
 
-class BadModel(FlaskSerializeMixin, db.Model):
+class BadModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default='')
 

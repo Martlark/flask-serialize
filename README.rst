@@ -20,9 +20,13 @@ Simple and quick to get going in two steps.
     
 .. code:: python
 
-    from flask_serialize import FlaskSerializeMixin
+    from flask_serialize import FlaskSerialize
 
-    class Item(db.Model, FlaskSerializeMixin):
+    # create a flask-serialize mixin instance from
+    # the factory method `FlaskSerialize`
+    fs_mixin = FlaskSerialize(db)
+
+    class Item(db.Model, fs_mixin):
         id = db.Column(db.Integer, primary_key=True)
         # other fields ...
 
@@ -55,14 +59,14 @@ Model setup:
 .. code:: python
 
     # example database model
-    from flask_serialize import FlaskSerializeMixin
+    from flask_serialize import FlaskSerialize
 
     # required to set class var db for writing to a database
     from app import db
 
-    FlaskSerializeMixin.db = db
+    fs_mixin = FlaskSerialize(db)
 
-    class Setting(FlaskSerializeMixin, db.Model):
+    class Setting(fs_mixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
     
         setting_type = db.Column(db.String(120), index=True, default='misc')
@@ -921,6 +925,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.
 * 1.3.1 - Fix incorrect method signatures.  Add query_by_access method.
 * 1.3.0 - Add can_update and can_access methods for controlling update and access.
