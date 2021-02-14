@@ -24,5 +24,5 @@ pip install pytest-flask
 
 . venv3/bin/activate
 python setup.py sdist bdist_wheel
-twine check dist/flask_serialize-1.4.0*
-twine upload dist/flask_serialize-1.4.0* -u martlark
+twine check dist/flask_serialize-1.4.1*
+twine upload dist/flask_serialize-1.4.1* -u martlark
