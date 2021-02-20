@@ -390,9 +390,10 @@ keys here.
 Update Properties
 -----------------
 
-When returning a success code from a put or post update a dict
-composed of the property values from the update_properties list is returned
-as "properties".
+When returning a success result from a put or post update, a dict
+composed of the property values from the `update_properties` list is returned
+as "properties".  If not specified the `update_properties` list returns all
+allowable model fields and properties.
 
 .. code:: python
 
@@ -925,6 +926,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.
 * 1.3.1 - Fix incorrect method signatures.  Add query_by_access method.

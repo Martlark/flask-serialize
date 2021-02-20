@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.4.1'
+    __version__ = '1.4.2'
 
     def before_update(self, data_dict):
         """
@@ -545,10 +545,12 @@ class FlaskSerializeMixin:
         ie:
         return jsonify({'message': 'Updated', 'properties': item.__return_properties()})
         this can be used to communicate from the model on the server to the JavaScript code
-        interesting things from updates
+        interesting things from updates, by default returns all accessible fields / properties.
 
         :return: dictionary of properties
         """
+        if len(self.update_properties) == 0:
+            return self.__as_exclude_json_dict()
         return {prop: self.property_converter(getattr(self, prop)) for prop in self.update_properties}
 
     @classmethod
