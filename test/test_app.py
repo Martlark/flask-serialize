@@ -377,6 +377,15 @@ def test_get_delete_put_post(client):
     assert item
     assert item.value == new_value
     assert 20 == item.number
+    # update with empty update_properties using post
+    new_value = random_string()
+    Setting.update_properties = []
+    rv = client.post('/setting_post/{}'.format(item.id),
+                     data=dict(setting_type='test', key=key, value=new_value, number=10))
+    assert rv.status_code == 200
+    assert rv.json['message'] == 'Updated'
+    # test update_properties are returned
+    assert rv.json['properties']['key'] == key
     # post item not found
     rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
                      data=dict(setting_type='test', key=key, value='new-value', number=10))
