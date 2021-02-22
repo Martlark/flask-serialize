@@ -230,6 +230,10 @@ Create or update from a WTF form:
 
 
 Create a child database object:
+===============================
+
+Using POST.
+-----------
 
 As example: add a `Stat` object to a Survey object using the `request_create_form` convenience method.  The foreign key
 to the parent `Survey` is provided as a `kwargs` parameter to the method.
@@ -240,6 +244,27 @@ to the parent `Survey` is provided as a `kwargs` parameter to the method.
         def stat_add(survey_id=None):
             survey = Survey.query.get_or_404(survey_id)
             return Stat.request_create_form(survey_id=survey.id).as_dict
+
+Using `get_delete_put_post`.
+----------------------------
+
+As example: add a `Stat` object to a Survey object using the `get_delete_put_post` convenience method.  The foreign key
+to the parent `Survey` is provided in the form data as survey_id.  `create_fields` list must then include `survey_id` as
+the foreign key field to be set.
+
+.. code:: html
+
+        <form>
+               <input type="hidden" name="survey_id" value="56">
+               <input name="value">
+        </form>
+
+.. code:: python
+
+        @app.route('/stat/', methods=['POST'])
+        def stat_add():
+            return Stat.get_delete_put_post()
+
 
 Writing and creating
 ====================
@@ -424,12 +449,25 @@ interesting things from updates
 Creation fields used when creating specification
 ------------------------------------------------
 
-List of model fields to be read from a form or json when creating an object.  Do not put foreign keys or primary
-keys here.  This is usually the same as update_fields.
+List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
+the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
+This is usually the same as update_fields.
 
 .. code:: python
 
     create_fields = []
+
+Example:
+
+.. code:: python
+
+    class Setting(fs_mixin, FormPageMixin, db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+
+        setting_type = db.Column(db.String(120), index=True, default='misc')
+        value = db.Column(db.String(3000), default='')
+
+        create_fields = [setting_type, 'value']
 
 Update DateTime fields specification
 -------------------------------------
@@ -926,6 +964,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.4.3 - Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.
 * 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.

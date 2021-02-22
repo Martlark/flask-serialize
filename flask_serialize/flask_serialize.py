@@ -209,6 +209,8 @@ class FlaskSerializeMixin:
         :param value: value to convert
         :return: the new value
         """
+        if value is None:
+            return None
         if isinstance(value, datetime):
             return self.to_date_short(value)
         if isinstance(value, set):
@@ -412,11 +414,15 @@ class FlaskSerializeMixin:
             json_data = request.get_json(force=True)
             if len(json_data) > 0:
                 for field in cls.create_fields:
+                    if cls.db and isinstance(field, cls.db.Column):
+                        field = field.name
                     if field in json_data:
                         value = json_data.get(field)
                         setattr(new_item, field, new_item.__convert_value(field, value))
         except:
             for field in cls.create_fields:
+                if cls.db and isinstance(field, cls.db.Column):
+                    field = field.name
                 if field in request.form:
                     value = request.form.get(field)
                     setattr(new_item, field, new_item.__convert_value(field, value))
@@ -498,6 +504,8 @@ class FlaskSerializeMixin:
             raise Exception('update_fields is empty')
 
         for field in self.update_fields:
+            if self.db and isinstance(field, self.db.Column):
+                field = field.name
             self.previous_field_value[field] = getattr(self, field)
             if field in data_dict:
                 setattr(self, field, self.__convert_value(field, data_dict[field]))

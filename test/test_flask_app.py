@@ -261,8 +261,8 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
     single = db.relationship('Single', backref='setting', uselist=False, cascade="all, delete-orphan")
 
     # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
+    update_fields = [setting_type, 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
+    create_fields = [setting_type, 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings', 'single']
