@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from test.test_flask_app import app, db, Setting, SubSetting, BadModel
+from test.test_flask_app import app, db, Setting, SubSetting, BadModel, DateTest
 
 
 def random_string(length=20):
@@ -198,6 +198,7 @@ def test_private_field(client):
     items = Setting.dict_list(query)
     assert 'key' not in items[0]
 
+
 def test_can_access_update(client):
     # create
     excluded_key = random_string()
@@ -233,7 +234,7 @@ def test_can_access_update(client):
     result_list = Setting.query_by_access(setting_type='test')
     assert len(result_list) == 2
     result_list = Setting.query_by_access(user='Andrew', setting_type='test')
-    assert len(result_list) == 1 # no robert
+    assert len(result_list) == 1  # no robert
 
 
 def test_can_delete(client):
@@ -318,6 +319,22 @@ def test_convert_type(client):
     assert int_value_to_convert * convert_multiple == item.number
 
 
+def test_sqlite_datetime_convert_type(client):
+    # test sqlite conversion types
+    date_value = '2004-05-23'
+    rv = client.post('/datetest', data=dict(a_date=date_value))
+    assert rv.status_code == 200, rv.data
+    item = DateTest.query.first()
+    assert item.a_date == datetime.strptime(date_value, '%Y-%m-%d')
+    date_value = '2010-05-23'
+    rv = client.put('/datetest/{}'.format(item.id),
+                    json=dict(a_date=date_value))
+    assert rv.status_code == 200, rv.data
+    item = DateTest.query.first()
+    # explicit double conversion type
+    assert item.a_date == datetime.strptime(date_value, '%Y-%m-%d')
+
+
 def test_excluded(client):
     # create
     key = random_string()
@@ -373,19 +390,11 @@ def test_get_delete_put_post(client):
     assert rv.json['message'] == 'Updated'
     # test update_properties are returned
     assert rv.json['properties']['prop_test'] == 'prop:' + new_value
+    assert rv.json['item']['key'] == key
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == new_value
     assert 20 == item.number
-    # update with empty update_properties using post
-    new_value = random_string()
-    Setting.update_properties = []
-    rv = client.post('/setting_post/{}'.format(item.id),
-                     data=dict(setting_type='test', key=key, value=new_value, number=10))
-    assert rv.status_code == 200
-    assert rv.json['message'] == 'Updated'
-    # test update_properties are returned
-    assert rv.json['properties']['key'] == key
     # post item not found
     rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
                      data=dict(setting_type='test', key=key, value='new-value', number=10))

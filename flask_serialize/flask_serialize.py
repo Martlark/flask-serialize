@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from flask import request, jsonify, abort, current_app
 from permissive_dict import PermissiveDict
@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.4.2'
+    __version__ = '1.4.3'
 
     def before_update(self, data_dict):
         """
@@ -247,6 +247,23 @@ class FlaskSerializeMixin:
         value = value.decode()
         return value
 
+    @staticmethod
+    def __sqlite_date_converter(value):
+        """
+        convert an ISO-9 date or datetime from a form etc into a datetime as sqlite does
+        not handle date conversions nicely
+
+        :param value: form / json data to convert
+        :return: corrected datetime or time
+        """
+        if isinstance(value, datetime) or isinstance(value, time):
+            return value
+        # assumes ISO 8601 as per javascript standard for dates
+        try:
+            return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+        except:
+            return datetime.strptime(value, '%Y-%m-%d')
+
     def __get_props(self):
         """
         get the properties for this table to be used for introspection
@@ -267,8 +284,12 @@ class FlaskSerializeMixin:
                                 }
 
             # SQL columns
-            props.exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
+            props.__exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
             field_list = self.__table__.columns
+            if 'sqlite' in self.__table__.dialect_options:
+                props.DIALECT = 'sqlite'
+                self.convert_types.append(
+                    {'type': datetime, 'method': self.__sqlite_date_converter}),
             for f in field_list:
                 props.id = str(getattr(self, f.name, '')) if f.primary_key else props.id
             # add extra properties that are not from here
@@ -281,7 +302,7 @@ class FlaskSerializeMixin:
             # exclude fields / props
             props.field_list = []
             for f in field_list:
-                if f.name not in props.exclude_fields:
+                if f.name not in props.__exclude_fields:
                     f.c_type = str(f.type).split('(')[0]
                     f.converter = props.converters.get(f.c_type)
                     if not f.converter:
@@ -376,12 +397,13 @@ class FlaskSerializeMixin:
     def __convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
-        override built in conversions by setting the value of convert_types. ie:
-        first uses bare value to determine type and then
-        uses db derived values
+        override built in conversions by setting the value of convert_types.
+        First uses bare value to determine type and then uses db derived values
+        ie:
         convert_types = [{'type':bool, 'method': lambda x: not x}]
 
-        :param value:
+        :param name: name of the field to update
+        :param value: value to update with
         :return: the converted value
         """
         for t in self.convert_types:
@@ -557,8 +579,6 @@ class FlaskSerializeMixin:
 
         :return: dictionary of properties
         """
-        if len(self.update_properties) == 0:
-            return self.__as_exclude_json_dict()
         return {prop: self.property_converter(getattr(self, prop)) for prop in self.update_properties}
 
     @classmethod
@@ -603,7 +623,8 @@ class FlaskSerializeMixin:
             elif request.method == 'POST' or request.method == 'PUT':
                 # update single item
                 item.request_update_form()
-                return jsonify(dict(message='Updated', properties=item.__return_properties()))
+                return jsonify(
+                    dict(message='Updated', item=item.__as_exclude_json_dict(), properties=item.__return_properties()))
 
             elif request.method == 'DELETE':
                 # delete a single item

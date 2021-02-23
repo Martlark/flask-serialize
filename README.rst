@@ -355,8 +355,8 @@ item can be deleted.  Simply raise an exception
 when there is a problem.   By default `can_delete`
 calls `can_update` unless overridden.  See model example.
 
-Update
-------
+Can Update
+----------
 
 .. code:: python
 
@@ -370,8 +370,8 @@ item can be updated.  Simply raise an exception
 when there is a problem or return False.  By default `can_update`
 uses the result from `can_access` unless overridden.
 
-Access
-------
+Can Access
+----------
 
 .. code:: python
 
@@ -417,12 +417,7 @@ Update Properties
 
 When returning a success result from a put or post update, a dict
 composed of the property values from the `update_properties` list is returned
-as "properties".  If not specified the `update_properties` list returns all
-allowable model fields and properties.
-
-.. code:: python
-
-    update_properties = []
+as "properties".
 
 Example return JSON:
 
@@ -663,7 +658,8 @@ Notes:
 Mixin Helper methods and properties
 ===================================
 
-``get_delete_put_post(item_id, user, prop_filters)``
+get_delete_put_post(item_id, user, prop_filters)
+------------------------------------------------
 
 Put, get, delete, post and get-all magic method handler.
 
@@ -676,7 +672,7 @@ Method Operation
 ====== ==============================================================================================================================
 GET    returns one item when `item_id` is a primary key.
 GET    returns all items when `item_id` is None.
-PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.
+PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.  Returns new item as {item}
 DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error. Returns the item removed.
 POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify method before creating.
 POST   updates an item from form data using `item_id`. Returns json response of {'message':'something'}.  Calls the model verify method before updating.
@@ -964,7 +960,7 @@ Example to create using POST:
 Release Notes
 -------------
 
-* 1.4.3 - Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.
+* 1.4.3 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour
 * 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.

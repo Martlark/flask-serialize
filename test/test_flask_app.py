@@ -4,7 +4,7 @@ import string
 import time
 from datetime import datetime, timedelta
 
-from flask import Flask, redirect, url_for, Response, request, render_template, flash, abort
+from flask import Flask, redirect, url_for, Response, request, render_template, flash
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -193,6 +193,12 @@ def route_setting_form(item_id=None):
     return new_item
 
 
+@app.route('/datetest', methods=['POST'])
+@app.route('/datetest/<int:item_id>', methods=['PUT'])
+def route_datetest(item_id=None):
+    return DateTest.get_delete_put_post(item_id)
+
+
 # =========================
 # MODELS
 # =========================
@@ -238,6 +244,12 @@ class Single(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     wang = db.Column(db.String(120), default='wang')
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
+
+
+class DateTest(fs_mixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    a_date = db.Column(db.DateTime, default=datetime.utcnow)
+    update_fields = create_fields = ['a_date']
 
 
 class Setting(fs_mixin, FormPageMixin, db.Model):
