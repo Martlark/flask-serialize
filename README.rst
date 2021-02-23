@@ -667,16 +667,20 @@ Put, get, delete, post and get-all magic method handler.
 * `user`: user to user as query filter.
 * `prop_filters`: dictionary of key:value pairs to limit results when returning get-all.
 
-====== ==============================================================================================================================
-Method Operation
-====== ==============================================================================================================================
-GET    returns one item when `item_id` is a primary key.
-GET    returns all items when `item_id` is None.
-PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.  Returns new item as {item}
-DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error. Returns the item removed.
-POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify method before creating.
-POST   updates an item from form data using `item_id`. Returns json response of {'message':'something'}.  Calls the model verify method before updating.
-====== ==============================================================================================================================
+====== ================================================================================================== ============================
+Method Operation                                                                                          Response
+====== ================================================================================================== ============================
+GET    returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
+GET    returns all items when `item_id` is None.                                                          [{item1},{item2},...]
+PUT    updates item using `item_id` as the id from request json data.  Calls the model `verify` before    {message:message,item:{model_fields,...},properties:{update_properties}}
+       updating.  Returns new item as {item}
+DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error.         {property1:value1,property2:value2,...}
+       Returns the item removed.  Calls `can_delete` before delete.
+POST   creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...}
+       when `item_id` is None. Calls the model `verify` method before creating.
+POST   updates an item from form data using `item_id`.                                                    {message:message,item:{model_fields,...},properties:{update_properties}}
+       Calls the model `verify` method before updating.
+====== ================================================================================================== ============================
 
 On error returns a response of 'error message' with http status code of 400.
 
@@ -687,7 +691,8 @@ relationship.
 Prop filters is a dictionary of `property name`:`value` pairs.  Ie: {'group': 'admin'} to restrict list to the
 admin group.  Properties or database fields can be used as the property name.
 
-``as_dict``
+as_dict
+-------
 
 .. code:: python
 
@@ -698,7 +703,8 @@ admin group.  Properties or database fields can be used as the property name.
         :return: dict
         """
 
-``as_json``
+as_json
+-------
 
 .. code:: python
 
@@ -710,7 +716,8 @@ admin group.  Properties or database fields can be used as the property name.
         :return: json object
         """
 
-``before_update``
+before_update(cls, data_dict)
+-----------------------------
 
 .. code:: python
 
@@ -734,7 +741,8 @@ Example, make sure active is 'n' if no value from a request.
         return d
 
 
-``dict_list()``
+dict_list(cls, query_result)
+----------------------------
 
 .. code:: python
 
@@ -745,9 +753,10 @@ Example, make sure active is 'n' if no value from a request.
         :return: list of dict objects
         """
 
-``json_list(query_result)``
+json_list(query_result)
+-----------------------
 
-Return a flask response in json format from a sql alchemy query result.
+Return a flask response in json list format from a sql alchemy query result.
 
 .. code:: python
 
@@ -769,7 +778,8 @@ Example:
         items = Address.query.filter_by(user=current_user)
         return Address.json_list(items)
 
-``json_filter_by(**kw_args)``
+json_filter_by(kw_args)
+-----------------------
 
 Return a flask list response in json format using a filter_by query.
 
@@ -792,7 +802,8 @@ Example:
     def address_list():
         return Address.filter_by(user=current_user)
 
-``json_first(**kwargs)``
+json_first(kwargs)
+------------------
 
 Return the first result in json format using filter_by arguments.
 
@@ -805,7 +816,8 @@ Example:
     def score(course):
         return Score.json_first(class_name=course)
 
-``previous_field_value``
+previous_field_value
+--------------------
 
 A dictionary of the previous field values before an update is applied from a dict, form or json update operation. Helpful
 in the `verify` method to see if field values are to be changed.
@@ -819,7 +831,8 @@ Example:
         if previous_value != self.value:
             current_app.logger.warning(f'value is changing from {previous_value}')
 
-``request_create_form(**kwargs)``
+request_create_form(kwargs)
+---------------------------
 
 Use the contents of a Flask request form or request json data to create a item
 in the database.   Calls verify(create=True).  Returns the new item or throws error.
@@ -837,7 +850,8 @@ Create a score item with the parent being a course.
         course = Course.query.get_or_404(course_id)
         return Score.request_create_form(course_id=course.id).as_dict
 
-``request_update_form()``
+request_update_form()
+---------------------
 
 Use the contents of a Flask request form or request json data to update an item
 in the database.   Calls verify().  Returns True on success.
@@ -876,7 +890,8 @@ Example:
 
 This provides a method and class properties to quickly add a standard way of dealing with WTF forms on a Flask page.
 
-``form_page(cls, item_id=None)``
+form_page(cls, item_id=None)
+----------------------------
 
 Do all the work for creating and editing items using a template and a wtf form.
 
