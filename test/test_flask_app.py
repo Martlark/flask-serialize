@@ -77,10 +77,10 @@ def route_sub_setting_get_delete_put_post(item_id=None, user='fake'):
     return SubSetting.get_delete_put_post(item_id, user)
 
 
-@app.route('/bad_add', methods=['POST'])
-@app.route('/bad_edit/<int:item_id>', methods=['PUT', 'POST'])
-def route_bad_get_delete_put_post(item_id=None, user=None):
-    return BadModel.get_delete_put_post(item_id, user)
+@app.route('/simple_add', methods=['POST'])
+@app.route('/simple_edit/<int:item_id>', methods=['PUT', 'POST'])
+def route_simple_get_delete_put_post(item_id=None, user=None):
+    return SimpleModel.get_delete_put_post(item_id, user)
 
 
 @app.route('/setting_get_json/<int:item_id>', methods=['GET'])
@@ -384,12 +384,16 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         return 'Setting {}'.format(self.key)
 
 
-class BadModel(fs_mixin, db.Model):
+class SimpleModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default='')
 
+    @property
+    def prop(self):
+        return 'prop:' + self.value
+
     def __repr__(self):
-        return '<BadModel %r>' % (self.value)
+        return '<SimpleModel %r>' % (self.value)
 
 
 if __name__ == '__main__':

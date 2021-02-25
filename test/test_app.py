@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from test.test_flask_app import app, db, Setting, SubSetting, BadModel, DateTest
+from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
 
 
 def random_string(length=20):
@@ -530,33 +530,45 @@ def test_form_page(client):
     assert b'Missing key' in rv.data
 
 
-def test_raise_error_for_create_fields(client):
+def test_default_create_fields(client):
     key = random_string()
+    value = random_string()
+    prop_test = random_string()
     # add
     old_create_fields = Setting.create_fields
     # remove fields
     Setting.create_fields = []
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
-    assert rv.status_code == 500
-    assert rv.data == b'Error creating item: create_fields is empty'
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, prop_test=prop_test))
+    assert 302 == rv.status_code, rv.data
+    # assert it was created
+    item = Setting.query.filter_by(key=key).first()
+    assert item.key == key, item
+    assert item.value == value, item
+    assert item.prop_test == 'prop:' + value, item
     Setting.create_fields = old_create_fields
 
 
-def test_raise_error_for_update_fields(client):
+def test_simple_model_update_fields(client):
     value = random_string()
     # add
-    item = BadModel(value=value)
+    item = SimpleModel(value=value)
     db.session.add(item)
     db.session.commit()
-    item = BadModel.query.filter_by(value=value).first_or_404()
+    item = SimpleModel.query.filter_by(value=value).first_or_404()
     # form
-    rv = client.post('/bad_edit/{}'.format(item.id), data=dict(value=value))
-    assert 400 == rv.status_code
-    assert b'update_fields is empty' in rv.data
+    value = random_string()
+    prop = random_string()
+    rv = client.post('/simple_edit/{}'.format(item.id), data=dict(value=value, prop=prop))
+    assert 200 == rv.status_code, rv.data
+    assert rv.json['item']['value'] == value, rv.data
+    assert b'Updated' in rv.data, rv.data
     # json
-    rv = client.put('/bad_edit/{}'.format(item.id), json=dict(value=value))
-    assert 400 == rv.status_code
-    assert b'update_fields is empty' in rv.data
+    value = random_string()
+    rv = client.put('/simple_edit/{}'.format(item.id), json=dict(value=value))
+    assert 200 == rv.status_code, rv.data
+    assert rv.json['item']['value'] == value, rv.data
+    assert rv.json['item']['prop'] == 'prop:' + value, rv.data
+    assert b'Updated' in rv.data, rv.data
 
 
 def test_override_datetime_conversion(client):

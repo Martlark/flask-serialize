@@ -355,7 +355,7 @@ item can be deleted.  Simply raise an exception
 when there is a problem.   By default `can_delete`
 calls `can_update` unless overridden.  See model example.
 
-Can Update
+can_update
 ----------
 
 .. code:: python
@@ -370,7 +370,7 @@ item can be updated.  Simply raise an exception
 when there is a problem or return False.  By default `can_update`
 uses the result from `can_access` unless overridden.
 
-Can Access
+can_access
 ----------
 
 .. code:: python
@@ -401,18 +401,18 @@ To exclude private fields when a user is not the admin.
         return False
 
 
-Updating fields list
---------------------
+update_fields
+-------------
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
-keys here.
+keys here.  By default, when `update_fields` is empty all Model fields can be updated.
 
 .. code:: python
 
     update_fields = []
 
-Update Properties
+update_properties
 -----------------
 
 When returning a success result from a put or post update, a dict
@@ -441,12 +441,17 @@ Example return JSON:
 This can be used to communicate from the model on the server to the JavaScript code
 interesting things from updates
 
-Creation fields used when creating specification
-------------------------------------------------
+create_fields
+-------------
 
 List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
 the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
-This is usually the same as update_fields.
+This is usually the same as `update_fields`.  When `create_fields` is empty all column fields can be inserted.
+
+Used by these methods:
+
+ * request_create_form
+ * get_delete_put_post
 
 .. code:: python
 
@@ -460,6 +465,7 @@ Example:
         id = db.Column(db.Integer, primary_key=True)
 
         setting_type = db.Column(db.String(120), index=True, default='misc')
+        private = db.Column(db.String(3000), default='secret')
         value = db.Column(db.String(3000), default='')
 
         create_fields = [setting_type, 'value']
@@ -975,7 +981,7 @@ Example to create using POST:
 Release Notes
 -------------
 
-* 1.4.3 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour
+* 1.4.3 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour.  By default updates/creates using all fields.
 * 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.

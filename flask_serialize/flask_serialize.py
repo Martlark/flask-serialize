@@ -292,9 +292,10 @@ class FlaskSerializeMixin:
                     {'type': datetime, 'method': self.__sqlite_date_converter}),
             for f in field_list:
                 props.id = str(getattr(self, f.name, '')) if f.primary_key else props.id
-            # add extra properties that are not from here
+            # add class properties
             field_list += [PermissiveDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
                            isinstance(getattr(self.__class__, p), property)]
+            # add relationships
             field_list += [PermissiveDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
             # add custom converters
             for converter, method in self.column_type_converters.items():
@@ -314,6 +315,20 @@ class FlaskSerializeMixin:
             self.__model_props[self.__table__] = props
         return props
 
+    def __get_fields(self):
+        """
+        return a list of field objects that are valid
+        using fs_private_field
+        [{name,c__type,converter},...]
+
+        :return:
+        """
+        fields = []
+        for c in self.__get_props().field_list:
+            if not self.fs_private_field(c.name):
+                fields.append(c)
+        return fields
+
     @property
     def as_dict(self):
         """
@@ -330,23 +345,22 @@ class FlaskSerializeMixin:
         # can be replaced using column_type_converters
         d = {}
 
-        for c in self.__get_props().field_list:
-            if not self.fs_private_field(c.name):
-                try:
-                    d[c.name] = v = getattr(self, c.name, '')
-                except Exception as e:
-                    v = str(e)
+        for c in self.__get_fields():
+            try:
+                d[c.name] = v = getattr(self, c.name, '')
+            except Exception as e:
+                v = str(e)
 
-                if v is None:
-                    d[c.name] = ''
-                elif c.converter:
-                    try:
-                        d[c.name] = c.converter(v)
-                    except Exception as e:
-                        d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
+            if v is None:
+                d[c.name] = ''
+            elif c.converter:
+                try:
+                    d[c.name] = c.converter(v)
+                except Exception as e:
+                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
-    def json_api_dict(self):
+    def __json_api_dict(self):
         """
         start of returning as JSON_API.  Unused
 
@@ -356,7 +370,7 @@ class FlaskSerializeMixin:
         d = dict(id=props.id, type=props.name, attributes=self.as_dict)
         return jsonify(d)
 
-    def json_api_list(self, query_result):
+    def __json_api_list(self, query_result):
         """
         start of returning as JSON_API.  Unused
         returns a list of items where can_access() from query_result
@@ -365,7 +379,7 @@ class FlaskSerializeMixin:
         :return: list of {id, name, attributes(dict)}
         """
         dict_list = self.dict_list(query_result=query_result)
-        d = dict(data=[item.json_api_dict() for item in dict_list])
+        d = dict(data=[item.__json_api_dict() for item in dict_list])
         return jsonify(d)
 
     def __get_update_field_type(self, field, value):
@@ -429,20 +443,21 @@ class FlaskSerializeMixin:
         """
         new_item = cls(**kwargs)
 
-        if len(new_item.create_fields or '') == 0:
-            raise Exception('create_fields is empty')
+        create_fields = list(new_item.create_fields)
+        if len(create_fields or '') == 0:
+            create_fields = [c.name for c in new_item.__get_fields() if isinstance(c, cls.db.Column)]
 
         try:
             json_data = request.get_json(force=True)
             if len(json_data) > 0:
-                for field in cls.create_fields:
+                for field in create_fields:
                     if cls.db and isinstance(field, cls.db.Column):
                         field = field.name
                     if field in json_data:
                         value = json_data.get(field)
                         setattr(new_item, field, new_item.__convert_value(field, value))
         except:
-            for field in cls.create_fields:
+            for field in create_fields:
                 if cls.db and isinstance(field, cls.db.Column):
                     field = field.name
                 if field in request.form:
@@ -522,10 +537,11 @@ class FlaskSerializeMixin:
         :return:
         """
         data_dict = self.before_update(data_dict)
+        update_fields = list(self.update_fields)
         if len(self.update_fields or '') == 0:
-            raise Exception('update_fields is empty')
+            update_fields = [c.name for c in self.__get_fields() if isinstance(c, self.db.Column)]
 
-        for field in self.update_fields:
+        for field in update_fields:
             if self.db and isinstance(field, self.db.Column):
                 field = field.name
             self.previous_field_value[field] = getattr(self, field)
