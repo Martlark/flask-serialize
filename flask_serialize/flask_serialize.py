@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.4.3'
+    __version__ = '1.5.0'
 
     def before_update(self, data_dict):
         """
@@ -272,7 +272,7 @@ class FlaskSerializeMixin:
         """
         props = self.__model_props.get(self.__table__)
         if not props:
-            props = PermissiveDict(name=self.__table__.name)
+            props = PermissiveDict(name=self.__table__.name, id=0, primary_key_field='id')
             props.converters = {'DATETIME': self.to_date_short,
                                 'PROPERTY': self.property_converter,
                                 'RELATIONSHIP': self.__relationship_converter,
@@ -290,8 +290,13 @@ class FlaskSerializeMixin:
                 props.DIALECT = 'sqlite'
                 self.convert_types.append(
                     {'type': datetime, 'method': self.__sqlite_date_converter}),
+            # detect primary field
             for f in field_list:
-                props.id = str(getattr(self, f.name, '')) if f.primary_key else props.id
+                if f.primary_key:
+                    props.id = str(getattr(self, f.name, ''))
+                    props.primary_key_field = f.name
+                    break
+
             # add class properties
             field_list += [PermissiveDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
                            isinstance(getattr(self.__class__, p), property)]
@@ -445,7 +450,8 @@ class FlaskSerializeMixin:
 
         create_fields = list(new_item.create_fields)
         if len(create_fields or '') == 0:
-            create_fields = [c.name for c in new_item.__get_fields() if isinstance(c, cls.db.Column)]
+            create_fields = [c.name for c in new_item.__get_fields() if
+                             isinstance(c, cls.db.Column) and c.name != new_item.__get_props().primary_key_field]
 
         try:
             json_data = request.get_json(force=True)
@@ -539,8 +545,8 @@ class FlaskSerializeMixin:
         data_dict = self.before_update(data_dict)
         update_fields = list(self.update_fields)
         if len(self.update_fields or '') == 0:
-            update_fields = [c.name for c in self.__get_fields() if isinstance(c, self.db.Column)]
-
+            update_fields = [c.name for c in self.__get_fields() if
+                             isinstance(c, self.db.Column) and c.name != self.__get_props().primary_key_field]
         for field in update_fields:
             if self.db and isinstance(field, self.db.Column):
                 field = field.name

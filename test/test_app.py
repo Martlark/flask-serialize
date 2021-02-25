@@ -272,10 +272,10 @@ def test_update_create_type_conversion(client):
     # default bool type conversion
     # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=False))
-    assert rv.status_code == 200
-    assert b'Updated' == rv.data
+    assert rv.status_code == 200, rv.data
+    assert b'Updated' == rv.data, rv.data
     item = Setting.query.filter_by(key=key).first()
-    assert 'n' == item.active
+    assert 'n' == item.active, item
     # query parameters as strings so bool converter does not work
     rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
@@ -443,7 +443,7 @@ def test_create_update_json(client):
     rv = client.post(f'/setting_post/{item.id}',
                      json=dict(setting_type='test', key=key, value=value, number=10,
                                scheduled=dt_now.strftime(Setting.scheduled_date_format)))
-    assert rv.status_code == 200
+    assert rv.status_code == 200, rv.data
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
@@ -455,7 +455,7 @@ def test_create_update_delete(client):
     key = random_string()
     value = random_string()
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, number=10))
-    assert rv.status_code == 302
+    assert rv.status_code == 302, rv.data
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
@@ -564,7 +564,7 @@ def test_simple_model_update_fields(client):
     assert b'Updated' in rv.data, rv.data
     # json
     value = random_string()
-    rv = client.put('/simple_edit/{}'.format(item.id), json=dict(value=value))
+    rv = client.put('/simple_edit/{}'.format(item.id), json=dict(value=value, id='dskdsf'))
     assert 200 == rv.status_code, rv.data
     assert rv.json['item']['value'] == value, rv.data
     assert rv.json['item']['prop'] == 'prop:' + value, rv.data
