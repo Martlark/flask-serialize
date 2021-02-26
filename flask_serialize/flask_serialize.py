@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from flask import request, jsonify, abort, current_app
 from permissive_dict import PermissiveDict
@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.4.2'
+    __version__ = '1.5.0'
 
     def before_update(self, data_dict):
         """
@@ -209,6 +209,8 @@ class FlaskSerializeMixin:
         :param value: value to convert
         :return: the new value
         """
+        if value is None:
+            return None
         if isinstance(value, datetime):
             return self.to_date_short(value)
         if isinstance(value, set):
@@ -245,6 +247,23 @@ class FlaskSerializeMixin:
         value = value.decode()
         return value
 
+    @staticmethod
+    def __sqlite_date_converter(value):
+        """
+        convert an ISO-9 date or datetime from a form etc into a datetime as sqlite does
+        not handle date conversions nicely
+
+        :param value: form / json data to convert
+        :return: corrected datetime or time
+        """
+        if isinstance(value, datetime) or isinstance(value, time):
+            return value
+        # assumes ISO 8601 as per javascript standard for dates
+        try:
+            return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+        except:
+            return datetime.strptime(value, '%Y-%m-%d')
+
     def __get_props(self):
         """
         get the properties for this table to be used for introspection
@@ -253,7 +272,7 @@ class FlaskSerializeMixin:
         """
         props = self.__model_props.get(self.__table__)
         if not props:
-            props = PermissiveDict(name=self.__table__.name)
+            props = PermissiveDict(name=self.__table__.name, id=0, primary_key_field='id')
             props.converters = {'DATETIME': self.to_date_short,
                                 'PROPERTY': self.property_converter,
                                 'RELATIONSHIP': self.__relationship_converter,
@@ -265,13 +284,23 @@ class FlaskSerializeMixin:
                                 }
 
             # SQL columns
-            props.exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
+            props.__exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
             field_list = self.__table__.columns
+            if 'sqlite' in self.__table__.dialect_options:
+                props.DIALECT = 'sqlite'
+                self.convert_types.append(
+                    {'type': datetime, 'method': self.__sqlite_date_converter}),
+            # detect primary field
             for f in field_list:
-                props.id = str(getattr(self, f.name, '')) if f.primary_key else props.id
-            # add extra properties that are not from here
+                if f.primary_key:
+                    props.id = str(getattr(self, f.name, ''))
+                    props.primary_key_field = f.name
+                    break
+
+            # add class properties
             field_list += [PermissiveDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
                            isinstance(getattr(self.__class__, p), property)]
+            # add relationships
             field_list += [PermissiveDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
             # add custom converters
             for converter, method in self.column_type_converters.items():
@@ -279,7 +308,7 @@ class FlaskSerializeMixin:
             # exclude fields / props
             props.field_list = []
             for f in field_list:
-                if f.name not in props.exclude_fields:
+                if f.name not in props.__exclude_fields:
                     f.c_type = str(f.type).split('(')[0]
                     f.converter = props.converters.get(f.c_type)
                     if not f.converter:
@@ -290,6 +319,20 @@ class FlaskSerializeMixin:
 
             self.__model_props[self.__table__] = props
         return props
+
+    def __get_fields(self):
+        """
+        return a list of field objects that are valid
+        using fs_private_field
+        [{name,c__type,converter},...]
+
+        :return:
+        """
+        fields = []
+        for c in self.__get_props().field_list:
+            if not self.fs_private_field(c.name):
+                fields.append(c)
+        return fields
 
     @property
     def as_dict(self):
@@ -307,23 +350,22 @@ class FlaskSerializeMixin:
         # can be replaced using column_type_converters
         d = {}
 
-        for c in self.__get_props().field_list:
-            if not self.fs_private_field(c.name):
-                try:
-                    d[c.name] = v = getattr(self, c.name, '')
-                except Exception as e:
-                    v = str(e)
+        for c in self.__get_fields():
+            try:
+                d[c.name] = v = getattr(self, c.name, '')
+            except Exception as e:
+                v = str(e)
 
-                if v is None:
-                    d[c.name] = ''
-                elif c.converter:
-                    try:
-                        d[c.name] = c.converter(v)
-                    except Exception as e:
-                        d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
+            if v is None:
+                d[c.name] = ''
+            elif c.converter:
+                try:
+                    d[c.name] = c.converter(v)
+                except Exception as e:
+                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
         return d
 
-    def json_api_dict(self):
+    def __json_api_dict(self):
         """
         start of returning as JSON_API.  Unused
 
@@ -333,7 +375,7 @@ class FlaskSerializeMixin:
         d = dict(id=props.id, type=props.name, attributes=self.as_dict)
         return jsonify(d)
 
-    def json_api_list(self, query_result):
+    def __json_api_list(self, query_result):
         """
         start of returning as JSON_API.  Unused
         returns a list of items where can_access() from query_result
@@ -342,7 +384,7 @@ class FlaskSerializeMixin:
         :return: list of {id, name, attributes(dict)}
         """
         dict_list = self.dict_list(query_result=query_result)
-        d = dict(data=[item.json_api_dict() for item in dict_list])
+        d = dict(data=[item.__json_api_dict() for item in dict_list])
         return jsonify(d)
 
     def __get_update_field_type(self, field, value):
@@ -374,12 +416,13 @@ class FlaskSerializeMixin:
     def __convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
-        override built in conversions by setting the value of convert_types. ie:
-        first uses bare value to determine type and then
-        uses db derived values
+        override built in conversions by setting the value of convert_types.
+        First uses bare value to determine type and then uses db derived values
+        ie:
         convert_types = [{'type':bool, 'method': lambda x: not x}]
 
-        :param value:
+        :param name: name of the field to update
+        :param value: value to update with
         :return: the converted value
         """
         for t in self.convert_types:
@@ -405,18 +448,24 @@ class FlaskSerializeMixin:
         """
         new_item = cls(**kwargs)
 
-        if len(new_item.create_fields or '') == 0:
-            raise Exception('create_fields is empty')
+        create_fields = list(new_item.create_fields)
+        if len(create_fields or '') == 0:
+            create_fields = [c.name for c in new_item.__get_fields() if
+                             isinstance(c, cls.db.Column) and c.name != new_item.__get_props().primary_key_field]
 
         try:
             json_data = request.get_json(force=True)
             if len(json_data) > 0:
-                for field in cls.create_fields:
+                for field in create_fields:
+                    if cls.db and isinstance(field, cls.db.Column):
+                        field = field.name
                     if field in json_data:
                         value = json_data.get(field)
                         setattr(new_item, field, new_item.__convert_value(field, value))
         except:
-            for field in cls.create_fields:
+            for field in create_fields:
+                if cls.db and isinstance(field, cls.db.Column):
+                    field = field.name
                 if field in request.form:
                     value = request.form.get(field)
                     setattr(new_item, field, new_item.__convert_value(field, value))
@@ -494,10 +543,13 @@ class FlaskSerializeMixin:
         :return:
         """
         data_dict = self.before_update(data_dict)
+        update_fields = list(self.update_fields)
         if len(self.update_fields or '') == 0:
-            raise Exception('update_fields is empty')
-
-        for field in self.update_fields:
+            update_fields = [c.name for c in self.__get_fields() if
+                             isinstance(c, self.db.Column) and c.name != self.__get_props().primary_key_field]
+        for field in update_fields:
+            if self.db and isinstance(field, self.db.Column):
+                field = field.name
             self.previous_field_value[field] = getattr(self, field)
             if field in data_dict:
                 setattr(self, field, self.__convert_value(field, data_dict[field]))
@@ -549,8 +601,6 @@ class FlaskSerializeMixin:
 
         :return: dictionary of properties
         """
-        if len(self.update_properties) == 0:
-            return self.__as_exclude_json_dict()
         return {prop: self.property_converter(getattr(self, prop)) for prop in self.update_properties}
 
     @classmethod
@@ -595,7 +645,8 @@ class FlaskSerializeMixin:
             elif request.method == 'POST' or request.method == 'PUT':
                 # update single item
                 item.request_update_form()
-                return jsonify(dict(message='Updated', properties=item.__return_properties()))
+                return jsonify(
+                    dict(message='Updated', item=item.__as_exclude_json_dict(), properties=item.__return_properties()))
 
             elif request.method == 'DELETE':
                 # delete a single item

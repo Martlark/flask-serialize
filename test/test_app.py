@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pytest
 
-from test.test_flask_app import app, db, Setting, SubSetting, BadModel
+from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
 
 
 def random_string(length=20):
@@ -198,6 +198,7 @@ def test_private_field(client):
     items = Setting.dict_list(query)
     assert 'key' not in items[0]
 
+
 def test_can_access_update(client):
     # create
     excluded_key = random_string()
@@ -233,7 +234,7 @@ def test_can_access_update(client):
     result_list = Setting.query_by_access(setting_type='test')
     assert len(result_list) == 2
     result_list = Setting.query_by_access(user='Andrew', setting_type='test')
-    assert len(result_list) == 1 # no robert
+    assert len(result_list) == 1  # no robert
 
 
 def test_can_delete(client):
@@ -271,10 +272,10 @@ def test_update_create_type_conversion(client):
     # default bool type conversion
     # json
     rv = client.put('/setting_update/{}'.format(item.id), json=dict(active=False))
-    assert rv.status_code == 200
-    assert b'Updated' == rv.data
+    assert rv.status_code == 200, rv.data
+    assert b'Updated' == rv.data, rv.data
     item = Setting.query.filter_by(key=key).first()
-    assert 'n' == item.active
+    assert 'n' == item.active, item
     # query parameters as strings so bool converter does not work
     rv = client.put('/setting_update/{}'.format(item.id), query_string=dict(active='y'))
     assert rv.status_code == 200
@@ -316,6 +317,22 @@ def test_convert_type(client):
     item = Setting.query.filter_by(key=key).first()
     # explicit double conversion type
     assert int_value_to_convert * convert_multiple == item.number
+
+
+def test_sqlite_datetime_convert_type(client):
+    # test sqlite conversion types
+    date_value = '2004-05-23'
+    rv = client.post('/datetest', data=dict(a_date=date_value))
+    assert rv.status_code == 200, rv.data
+    item = DateTest.query.first()
+    assert item.a_date == datetime.strptime(date_value, '%Y-%m-%d')
+    date_value = '2010-05-23'
+    rv = client.put('/datetest/{}'.format(item.id),
+                    json=dict(a_date=date_value))
+    assert rv.status_code == 200, rv.data
+    item = DateTest.query.first()
+    # explicit double conversion type
+    assert item.a_date == datetime.strptime(date_value, '%Y-%m-%d')
 
 
 def test_excluded(client):
@@ -373,19 +390,11 @@ def test_get_delete_put_post(client):
     assert rv.json['message'] == 'Updated'
     # test update_properties are returned
     assert rv.json['properties']['prop_test'] == 'prop:' + new_value
+    assert rv.json['item']['key'] == key
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == new_value
     assert 20 == item.number
-    # update with empty update_properties using post
-    new_value = random_string()
-    Setting.update_properties = []
-    rv = client.post('/setting_post/{}'.format(item.id),
-                     data=dict(setting_type='test', key=key, value=new_value, number=10))
-    assert rv.status_code == 200
-    assert rv.json['message'] == 'Updated'
-    # test update_properties are returned
-    assert rv.json['properties']['key'] == key
     # post item not found
     rv = client.post('/setting_post/{}'.format(random.randint(100, 999)),
                      data=dict(setting_type='test', key=key, value='new-value', number=10))
@@ -434,7 +443,7 @@ def test_create_update_json(client):
     rv = client.post(f'/setting_post/{item.id}',
                      json=dict(setting_type='test', key=key, value=value, number=10,
                                scheduled=dt_now.strftime(Setting.scheduled_date_format)))
-    assert rv.status_code == 200
+    assert rv.status_code == 200, rv.data
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
@@ -446,7 +455,7 @@ def test_create_update_delete(client):
     key = random_string()
     value = random_string()
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, number=10))
-    assert rv.status_code == 302
+    assert rv.status_code == 302, rv.data
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
@@ -521,33 +530,45 @@ def test_form_page(client):
     assert b'Missing key' in rv.data
 
 
-def test_raise_error_for_create_fields(client):
+def test_default_create_fields(client):
     key = random_string()
+    value = random_string()
+    prop_test = random_string()
     # add
     old_create_fields = Setting.create_fields
     # remove fields
     Setting.create_fields = []
-    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value='test-value'))
-    assert rv.status_code == 500
-    assert rv.data == b'Error creating item: create_fields is empty'
+    rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, prop_test=prop_test))
+    assert 302 == rv.status_code, rv.data
+    # assert it was created
+    item = Setting.query.filter_by(key=key).first()
+    assert item.key == key, item
+    assert item.value == value, item
+    assert item.prop_test == 'prop:' + value, item
     Setting.create_fields = old_create_fields
 
 
-def test_raise_error_for_update_fields(client):
+def test_simple_model_update_fields(client):
     value = random_string()
     # add
-    item = BadModel(value=value)
+    item = SimpleModel(value=value)
     db.session.add(item)
     db.session.commit()
-    item = BadModel.query.filter_by(value=value).first_or_404()
+    item = SimpleModel.query.filter_by(value=value).first_or_404()
     # form
-    rv = client.post('/bad_edit/{}'.format(item.id), data=dict(value=value))
-    assert 400 == rv.status_code
-    assert b'update_fields is empty' in rv.data
+    value = random_string()
+    prop = random_string()
+    rv = client.post('/simple_edit/{}'.format(item.id), data=dict(value=value, prop=prop))
+    assert 200 == rv.status_code, rv.data
+    assert rv.json['item']['value'] == value, rv.data
+    assert b'Updated' in rv.data, rv.data
     # json
-    rv = client.put('/bad_edit/{}'.format(item.id), json=dict(value=value))
-    assert 400 == rv.status_code
-    assert b'update_fields is empty' in rv.data
+    value = random_string()
+    rv = client.put('/simple_edit/{}'.format(item.id), json=dict(value=value, id='dskdsf'))
+    assert 200 == rv.status_code, rv.data
+    assert rv.json['item']['value'] == value, rv.data
+    assert rv.json['item']['prop'] == 'prop:' + value, rv.data
+    assert b'Updated' in rv.data, rv.data
 
 
 def test_override_datetime_conversion(client):

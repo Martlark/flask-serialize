@@ -4,7 +4,7 @@ import string
 import time
 from datetime import datetime, timedelta
 
-from flask import Flask, redirect, url_for, Response, request, render_template, flash, abort
+from flask import Flask, redirect, url_for, Response, request, render_template, flash
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -77,10 +77,10 @@ def route_sub_setting_get_delete_put_post(item_id=None, user='fake'):
     return SubSetting.get_delete_put_post(item_id, user)
 
 
-@app.route('/bad_add', methods=['POST'])
-@app.route('/bad_edit/<int:item_id>', methods=['PUT', 'POST'])
-def route_bad_get_delete_put_post(item_id=None, user=None):
-    return BadModel.get_delete_put_post(item_id, user)
+@app.route('/simple_add', methods=['POST'])
+@app.route('/simple_edit/<int:item_id>', methods=['PUT', 'POST'])
+def route_simple_get_delete_put_post(item_id=None, user=None):
+    return SimpleModel.get_delete_put_post(item_id, user)
 
 
 @app.route('/setting_get_json/<int:item_id>', methods=['GET'])
@@ -193,6 +193,12 @@ def route_setting_form(item_id=None):
     return new_item
 
 
+@app.route('/datetest', methods=['POST'])
+@app.route('/datetest/<int:item_id>', methods=['PUT'])
+def route_datetest(item_id=None):
+    return DateTest.get_delete_put_post(item_id)
+
+
 # =========================
 # MODELS
 # =========================
@@ -240,6 +246,12 @@ class Single(fs_mixin, db.Model):
     setting_id = db.Column(db.Integer, db.ForeignKey('setting.id'))
 
 
+class DateTest(fs_mixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    a_date = db.Column(db.DateTime, default=datetime.utcnow)
+    update_fields = create_fields = ['a_date']
+
+
 class Setting(fs_mixin, FormPageMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
@@ -261,8 +273,8 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
     single = db.relationship('Single', backref='setting', uselist=False, cascade="all, delete-orphan")
 
     # serializer fields
-    update_fields = ['setting_type', 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
-    create_fields = ['setting_type', 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
+    update_fields = [setting_type, 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
+    create_fields = [setting_type, 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
     exclude_serialize_fields = ['created']
     exclude_json_serialize_fields = ['updated']
     relationship_fields = ['sub_settings', 'single']
@@ -372,12 +384,16 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         return 'Setting {}'.format(self.key)
 
 
-class BadModel(fs_mixin, db.Model):
+class SimpleModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default='')
 
+    @property
+    def prop(self):
+        return 'prop:' + self.value
+
     def __repr__(self):
-        return '<BadModel %r>' % (self.value)
+        return '<SimpleModel %r>' % (self.value)
 
 
 if __name__ == '__main__':

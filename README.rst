@@ -230,6 +230,10 @@ Create or update from a WTF form:
 
 
 Create a child database object:
+===============================
+
+Using POST.
+-----------
 
 As example: add a `Stat` object to a Survey object using the `request_create_form` convenience method.  The foreign key
 to the parent `Survey` is provided as a `kwargs` parameter to the method.
@@ -240,6 +244,27 @@ to the parent `Survey` is provided as a `kwargs` parameter to the method.
         def stat_add(survey_id=None):
             survey = Survey.query.get_or_404(survey_id)
             return Stat.request_create_form(survey_id=survey.id).as_dict
+
+Using `get_delete_put_post`.
+----------------------------
+
+As example: add a `Stat` object to a Survey object using the `get_delete_put_post` convenience method.  The foreign key
+to the parent `Survey` is provided in the form data as survey_id.  `create_fields` list must then include `survey_id` as
+the foreign key field to be set.
+
+.. code:: html
+
+        <form>
+               <input type="hidden" name="survey_id" value="56">
+               <input name="value">
+        </form>
+
+.. code:: python
+
+        @app.route('/stat/', methods=['POST'])
+        def stat_add():
+            return Stat.get_delete_put_post()
+
 
 Writing and creating
 ====================
@@ -330,8 +355,8 @@ item can be deleted.  Simply raise an exception
 when there is a problem.   By default `can_delete`
 calls `can_update` unless overridden.  See model example.
 
-Update
-------
+can_update
+----------
 
 .. code:: python
 
@@ -345,8 +370,8 @@ item can be updated.  Simply raise an exception
 when there is a problem or return False.  By default `can_update`
 uses the result from `can_access` unless overridden.
 
-Access
-------
+can_access
+----------
 
 .. code:: python
 
@@ -376,28 +401,23 @@ To exclude private fields when a user is not the admin.
         return False
 
 
-Updating fields list
---------------------
+update_fields
+-------------
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
-keys here.
+keys here.  By default, when `update_fields` is empty all Model fields can be updated.
 
 .. code:: python
 
     update_fields = []
 
-Update Properties
+update_properties
 -----------------
 
 When returning a success result from a put or post update, a dict
 composed of the property values from the `update_properties` list is returned
-as "properties".  If not specified the `update_properties` list returns all
-allowable model fields and properties.
-
-.. code:: python
-
-    update_properties = []
+as "properties".
 
 Example return JSON:
 
@@ -421,15 +441,34 @@ Example return JSON:
 This can be used to communicate from the model on the server to the JavaScript code
 interesting things from updates
 
-Creation fields used when creating specification
-------------------------------------------------
+create_fields
+-------------
 
-List of model fields to be read from a form or json when creating an object.  Do not put foreign keys or primary
-keys here.  This is usually the same as update_fields.
+List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
+the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
+This is usually the same as `update_fields`.  When `create_fields` is empty all column fields can be inserted.
+
+Used by these methods:
+
+ * request_create_form
+ * get_delete_put_post
 
 .. code:: python
 
     create_fields = []
+
+Example:
+
+.. code:: python
+
+    class Setting(fs_mixin, FormPageMixin, db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+
+        setting_type = db.Column(db.String(120), index=True, default='misc')
+        private = db.Column(db.String(3000), default='secret')
+        value = db.Column(db.String(3000), default='')
+
+        create_fields = [setting_type, 'value']
 
 Update DateTime fields specification
 -------------------------------------
@@ -625,7 +664,8 @@ Notes:
 Mixin Helper methods and properties
 ===================================
 
-``get_delete_put_post(item_id, user, prop_filters)``
+get_delete_put_post(item_id, user, prop_filters)
+------------------------------------------------
 
 Put, get, delete, post and get-all magic method handler.
 
@@ -633,16 +673,20 @@ Put, get, delete, post and get-all magic method handler.
 * `user`: user to user as query filter.
 * `prop_filters`: dictionary of key:value pairs to limit results when returning get-all.
 
-====== ==============================================================================================================================
-Method Operation
-====== ==============================================================================================================================
-GET    returns one item when `item_id` is a primary key.
-GET    returns all items when `item_id` is None.
-PUT    updates item using `item_id` as the id from request json data.  Calls the model verify before updating.
-DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error. Returns the item removed.
-POST   creates and returns a Flask response with a new item as json from form body data or JSON body data when `item_id` is None. Calls the model verify method before creating.
-POST   updates an item from form data using `item_id`. Returns json response of {'message':'something'}.  Calls the model verify method before updating.
-====== ==============================================================================================================================
+====== ================================================================================================== ============================
+Method Operation                                                                                          Response
+====== ================================================================================================== ============================
+GET    returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
+GET    returns all items when `item_id` is None.                                                          [{item1},{item2},...]
+PUT    updates item using `item_id` as the id from request json data.  Calls the model `verify` before    {message:message,item:{model_fields,...},properties:{update_properties}}
+       updating.  Returns new item as {item}
+DELETE removes the item with primary key of `item_id` if self.can_delete does not throw an error.         {property1:value1,property2:value2,...}
+       Returns the item removed.  Calls `can_delete` before delete.
+POST   creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...}
+       when `item_id` is None. Calls the model `verify` method before creating.
+POST   updates an item from form data using `item_id`.                                                    {message:message,item:{model_fields,...},properties:{update_properties}}
+       Calls the model `verify` method before updating.
+====== ================================================================================================== ============================
 
 On error returns a response of 'error message' with http status code of 400.
 
@@ -653,7 +697,8 @@ relationship.
 Prop filters is a dictionary of `property name`:`value` pairs.  Ie: {'group': 'admin'} to restrict list to the
 admin group.  Properties or database fields can be used as the property name.
 
-``as_dict``
+as_dict
+-------
 
 .. code:: python
 
@@ -664,7 +709,8 @@ admin group.  Properties or database fields can be used as the property name.
         :return: dict
         """
 
-``as_json``
+as_json
+-------
 
 .. code:: python
 
@@ -676,7 +722,8 @@ admin group.  Properties or database fields can be used as the property name.
         :return: json object
         """
 
-``before_update``
+before_update(cls, data_dict)
+-----------------------------
 
 .. code:: python
 
@@ -700,7 +747,8 @@ Example, make sure active is 'n' if no value from a request.
         return d
 
 
-``dict_list()``
+dict_list(cls, query_result)
+----------------------------
 
 .. code:: python
 
@@ -711,9 +759,10 @@ Example, make sure active is 'n' if no value from a request.
         :return: list of dict objects
         """
 
-``json_list(query_result)``
+json_list(query_result)
+-----------------------
 
-Return a flask response in json format from a sql alchemy query result.
+Return a flask response in json list format from a sql alchemy query result.
 
 .. code:: python
 
@@ -735,7 +784,8 @@ Example:
         items = Address.query.filter_by(user=current_user)
         return Address.json_list(items)
 
-``json_filter_by(**kw_args)``
+json_filter_by(kw_args)
+-----------------------
 
 Return a flask list response in json format using a filter_by query.
 
@@ -758,7 +808,8 @@ Example:
     def address_list():
         return Address.filter_by(user=current_user)
 
-``json_first(**kwargs)``
+json_first(kwargs)
+------------------
 
 Return the first result in json format using filter_by arguments.
 
@@ -771,7 +822,8 @@ Example:
     def score(course):
         return Score.json_first(class_name=course)
 
-``previous_field_value``
+previous_field_value
+--------------------
 
 A dictionary of the previous field values before an update is applied from a dict, form or json update operation. Helpful
 in the `verify` method to see if field values are to be changed.
@@ -785,7 +837,8 @@ Example:
         if previous_value != self.value:
             current_app.logger.warning(f'value is changing from {previous_value}')
 
-``request_create_form(**kwargs)``
+request_create_form(kwargs)
+---------------------------
 
 Use the contents of a Flask request form or request json data to create a item
 in the database.   Calls verify(create=True).  Returns the new item or throws error.
@@ -803,7 +856,8 @@ Create a score item with the parent being a course.
         course = Course.query.get_or_404(course_id)
         return Score.request_create_form(course_id=course.id).as_dict
 
-``request_update_form()``
+request_update_form()
+---------------------
 
 Use the contents of a Flask request form or request json data to update an item
 in the database.   Calls verify().  Returns True on success.
@@ -842,7 +896,8 @@ Example:
 
 This provides a method and class properties to quickly add a standard way of dealing with WTF forms on a Flask page.
 
-``form_page(cls, item_id=None)``
+form_page(cls, item_id=None)
+----------------------------
 
 Do all the work for creating and editing items using a template and a wtf form.
 
@@ -926,6 +981,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.5.0 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.
