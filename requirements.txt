@@ -1,9 +1,9 @@
 wtforms
 flask
-SQLAlchemy
+SQLAlchemy>=1.4.2
 Permissive-Dict
 pytest
-flask-sqlalchemy
+flask-sqlalchemy>=2.5.1
 flask-migrate
 flask-wtf
 setuptools

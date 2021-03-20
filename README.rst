@@ -981,6 +981,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.5.1 - Fix TypeError: unsupported operand type(s) for +=: 'ImmutableColumnCollection' and 'list' with newer versions of SQLAlchemy
 * 1.5.0 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with update_properties
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.

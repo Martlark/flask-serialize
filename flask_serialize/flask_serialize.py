@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.5.0'
+    __version__ = '1.5.1'
 
     def before_update(self, data_dict):
         """
@@ -285,7 +285,7 @@ class FlaskSerializeMixin:
 
             # SQL columns
             props.__exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
-            field_list = self.__table__.columns
+            field_list = list(self.__table__.columns)
             if 'sqlite' in self.__table__.dialect_options:
                 props.DIALECT = 'sqlite'
                 self.convert_types.append(
