@@ -3,8 +3,10 @@ import random
 import string
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pytest
+from flask import g
 
 from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
 
@@ -444,6 +446,8 @@ def test_create_update_json(client):
                      json=dict(setting_type='test', key=key, value=value, number=10,
                                scheduled=dt_now.strftime(Setting.scheduled_date_format)))
     assert rv.status_code == 200, rv.data
+    after_commit = Path('after_commit.tmp').read_text()
+    assert after_commit == f"""fs_after_commit: {False} {item.id}"""
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
@@ -457,6 +461,8 @@ def test_create_update_delete(client):
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, number=10))
     assert rv.status_code == 302, rv.data
     item = Setting.query.filter_by(key=key).first()
+    after_commit = Path('after_commit.tmp').read_text()
+    assert after_commit.startswith(f"""fs_after_commit: {True} {item.id}""")
     assert item
     assert item.value == value
     # test that number is not set on creation as it is not included in create_fields
@@ -504,6 +510,8 @@ def test_form_page(client):
     rv = client.post('/setting_form_add', data=dict(setting_type='test', key=key, value='test-value', number=10))
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
+    after_commit = Path('after_commit.tmp').read_text()
+    assert after_commit.startswith(f"""fs_after_commit: {True} {item.id}""")
     assert item
     assert item.value == 'test-value'
     # test that number is not set on creation as it is not included in create_fields
