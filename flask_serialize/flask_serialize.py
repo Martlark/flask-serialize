@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     previous_field_value = {}
     # current version
-    __version__ = '1.5.1'
+    __version__ = '1.5.2'
 
     def before_update(self, data_dict):
         """
@@ -55,6 +55,14 @@ class FlaskSerializeMixin:
         :return: the new data_dict to use for updating
         """
         return data_dict
+
+    def fs_after_commit(self, create=False):
+        """
+        hook to call after any put/post commit so that you may do something
+        self will be the new / updated committed item
+
+        :param create: True when item was just created.
+        """
 
     def to_date_short(self, d):
         """
@@ -474,6 +482,7 @@ class FlaskSerializeMixin:
         new_item.update_timestamp()
         cls.db.session.add(new_item)
         cls.db.session.commit()
+        new_item.fs_after_commit(create=True)
         return new_item
 
     def request_update_form(self):
@@ -496,6 +505,7 @@ class FlaskSerializeMixin:
             raise Exception('FlaskSerializeMixin property "db" is not set')
         self.db.session.add(self)
         self.db.session.commit()
+        self.fs_after_commit(self)
         return True
 
     def request_update_json(self):
@@ -523,6 +533,7 @@ class FlaskSerializeMixin:
             raise Exception('FlaskSerializeMixin property "db" is not set')
         self.db.session.add(self)
         self.db.session.commit()
+        self.fs_after_commit()
         return True
 
     def update_timestamp(self):

@@ -4,7 +4,7 @@ import string
 import time
 from datetime import datetime, timedelta
 
-from flask import Flask, redirect, url_for, Response, request, render_template, flash
+from flask import Flask, redirect, url_for, Response, request, render_template, flash, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -308,6 +308,10 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         d = dict(data_dict)
         d['active'] = d.get('active', 'n')
         return d
+
+    def fs_after_commit(self, create=False):
+        with open('after_commit.tmp', 'w') as f:
+            f.write(f"""fs_after_commit: {create} {self.id}""")
 
     # checks if Flask-Serialize can access
     def can_access(self):

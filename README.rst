@@ -250,7 +250,8 @@ Using `get_delete_put_post`.
 
 As example: add a `Stat` object to a Survey object using the `get_delete_put_post` convenience method.  The foreign key
 to the parent `Survey` is provided in the form data as survey_id.  `create_fields` list must then include `survey_id` as
-the foreign key field to be set.
+the foreign key field to be set if you specify any `create_fields`.  By default all fields are allowed to be included
+when creating.
 
 .. code:: html
 
@@ -269,7 +270,7 @@ the foreign key field to be set.
 Writing and creating
 ====================
 
-When using any of the convenience methods to update, create or delete an object.  These properties and
+When using any of the convenience methods to update, create or delete an object these properties and
 methods control how flask-serialize handles the operation.
 
 Updating from a form or json
@@ -388,6 +389,8 @@ Private fields
 
 Fields can be made private for certain reasons by overriding the `fs_private_field` method
 and returning `True` if the field is to be private.
+
+Private fields will be excluded for any get, put and post methods.
 
 Example:
 
@@ -510,7 +513,7 @@ List of model field names to not serialize at all.
 
     exclude_serialize_fields = []
 
-List of model field names to not serialize when return as json.
+List of model field names to not serialize when returning as json.
 
 .. code:: python
 
@@ -519,14 +522,14 @@ List of model field names to not serialize when return as json.
 Filtering json list results
 ---------------------------
 
-Json result lists can be filtered by using the `prop_filters` on either
+Json result lists can be filtered by using the `prop_filters` parameter on either
 the `get_delete_put_post` method or the `json_list` method.
 
 The filter consists of one or more properties in the json result and
 the value that it must match.  Filter items will match against the
-first prop_filter property to exactly equal the value.
+first `prop_filter` property to exactly equal the value.
 
-NOTE: The filter is not applied with PUT, single GET or DELETE.
+NOTE: The filter is not applied with single a GET or, the PUT, POST and DELETE methods.
 
 Example to only return dogs:
 
@@ -660,6 +663,8 @@ Notes:
 * To add or modify values from a Flask request object before they are applied to the instance use the ``before_update`` hook.
   ``verify`` is called after ``before_update``.
 
+* To undertake actions after a commit use ``fs_after_commit`` hook.
+
 
 Mixin Helper methods and properties
 ===================================
@@ -721,6 +726,16 @@ as_json
 
         :return: json object
         """
+
+fs_after_commit(self, create=False)
+-----------------------------------
+
+.. code:: python
+
+    def fs_after_commit(self, create=False):
+
+Hook to call after any `update_from_dict`, `request_update_form`, `request_update_json` has been called so that
+you do what you like.  `self` is the updated or created (create==True) item.
 
 before_update(cls, data_dict)
 -----------------------------
@@ -981,6 +996,7 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 1.5.2 - Test with flask 2.0.  Add fs_after_commit method to allow post create/update actions.  Improve documentation.
 * 1.5.1 - Fix TypeError: unsupported operand type(s) for +=: 'ImmutableColumnCollection' and 'list' with newer versions of SQLAlchemy
 * 1.5.0 - Return item from POST/PUT updates. Allow create_fields and update_fields to be specified using the column fields.  None values serialize as null/None.  Restore previous update_properties behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with update_properties
@@ -1010,4 +1026,3 @@ Licensing
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/flask-serialize.svg
    :target: https://pypi.python.org/pypi/flask-serialize
-
