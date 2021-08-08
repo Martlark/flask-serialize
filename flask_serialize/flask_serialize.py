@@ -44,7 +44,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __version__ = '1.5.2'
+    __version__ = '2.0.1'
 
     def __fs_before_update__(self, data_dict):
         """
@@ -79,7 +79,6 @@ class FlaskSerializeMixin:
         filter a query result to that optionally owned by the given user and
         __fs_can_access__()
 
-        :param query: SQLAlchemy query
         :param user: the user to use as a filter, default relationship name is user (__fs_user_field__)
         :return: a list of query results
         """

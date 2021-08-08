@@ -975,13 +975,14 @@ Example to create using POST:
 Release Notes
 -------------
 
+* 2.0.1 - Try to get properties and methods to use more appropriate names.
 * 1.5.2 - Test with flask 2.0.  Add  __fs_after_commit__ method to allow post create/update actions.  Improve documentation.
 * 1.5.1 - Fix TypeError: unsupported operand type(s) for +=: 'ImmutableColumnCollection' and 'list' with newer versions of SQLAlchemy
 * 1.5.0 - Return item from POST/PUT updates. Allow __fs_create_fields__ and __fs_update_fields__ to be specified using the column fields.  None values serialize as null/None.  Restore previous __fs_update_properties__ behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with __fs_update_properties__
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
 * 1.4.0 - Add fs_private_field method.
-* 1.3.1 - Fix incorrect method signatures.  Add  fs_query_by_access method.
+* 1.3.1 - Fix incorrect method signatures.  Add fs_query_by_access method.
 * 1.3.0 - Add __fs_can_update__ and __fs_can_access__ methods for controlling update and access.
 * 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
 * 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.

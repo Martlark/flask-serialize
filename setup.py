@@ -15,7 +15,7 @@
 from codecs import open
 from setuptools import setup
 
-VERSION = '1.5.2'
+VERSION = '2.0.1'
 LONG_DESCRIPTION = open('README.rst', 'r', encoding='utf-8').read()
 
 setup(
