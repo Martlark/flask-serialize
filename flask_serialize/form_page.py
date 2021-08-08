@@ -4,13 +4,15 @@ from flask import flash, redirect, url_for, request, render_template
 class FormPageMixin:
     # form_page properties
     form_page_form = None  # name of the form to use
-    form_page_route_update = form_page_route_create = ''  # method names for successful redirect
-    form_page_template = ''  # template for editing
+    form_page_route_update = (
+        form_page_route_create
+    ) = ""  # method names for successful redirect
+    form_page_template = ""  # template for editing
     # all these called with .format(cls) or .format(item) as appropriate
-    form_page_update_format = 'Updated {}'
-    form_page_create_format = 'Created {}'
-    form_page_new_title_format = 'New {}'
-    form_page_update_title_format = 'Edit {}'
+    form_page_update_format = "Updated {}"
+    form_page_create_format = "Created {}"
+    form_page_new_title_format = "New {}"
+    form_page_update_title_format = "Edit {}"
 
     @classmethod
     def form_page(cls, item_id=None):
@@ -43,16 +45,20 @@ class FormPageMixin:
                     msg = cls.form_page_update_format.format(item)
                     if msg:
                         flash(msg)
-                    return redirect(url_for(cls.form_page_route_update, item_id=item_id))
+                    return redirect(
+                        url_for(cls.form_page_route_update, item_id=item_id)
+                    )
                 else:
                     new_item = cls.fs_request_create_form()
                     msg = cls.form_page_create_format.format(new_item)
                     if msg:
                         flash(msg)
-                    return redirect(url_for(cls.form_page_route_create, item_id=new_item.id))
+                    return redirect(
+                        url_for(cls.form_page_route_create, item_id=new_item.id)
+                    )
             except Exception as e:
-                flash(str(e), category='danger')
-        elif request.method == 'GET':
+                flash(str(e), category="danger")
+        elif request.method == "GET":
             if not item_id:
                 # new blank form
                 item = cls()
@@ -60,6 +66,16 @@ class FormPageMixin:
             form = cls.form_page_form(obj=item)
 
         if form.errors:
-            flash(''.join([f'{form[f].label.text}: {"".join(e)} ' for f, e in form.errors.items()]), category='danger')
+            flash(
+                "".join(
+                    [
+                        f'{form[f].label.text}: {"".join(e)} '
+                        for f, e in form.errors.items()
+                    ]
+                ),
+                category="danger",
+            )
 
-        return render_template(cls.form_page_template, title=title, item_id=item_id, item=item, form=form)
+        return render_template(
+            cls.form_page_template, title=title, item_id=item_id, item=item, form=form
+        )

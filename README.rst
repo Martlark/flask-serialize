@@ -387,7 +387,7 @@ item can be read or accessed.  Return False to exclude from results.
 Private fields
 --------------
 
-Fields can be made private for certain reasons by overriding the `fs_private_field` method
+Fields can be made private for certain reasons by overriding the `__fs_private_field__` method
 and returning `True` if the field is to be private.
 
 Private fields will be excluded for any get, put and post methods.
@@ -398,7 +398,7 @@ To exclude private fields when a user is not the admin.
 
 .. code:: python
 
-    def fs_private_field(self, field_name):
+    def __fs_private_field__(self, field_name):
         if not is_admin_user() and field_name.upper().startswith('PRIVATE_'):
             return True
         return False
@@ -981,7 +981,7 @@ Release Notes
 * 1.5.0 - Return item from POST/PUT updates. Allow __fs_create_fields__ and __fs_update_fields__ to be specified using the column fields.  None values serialize as null/None.  Restore previous __fs_update_properties__ behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with __fs_update_properties__
 * 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
-* 1.4.0 - Add fs_private_field method.
+* 1.4.0 - Add __fs_private_field__ method.
 * 1.3.1 - Fix incorrect method signatures.  Add fs_query_by_access method.
 * 1.3.0 - Add __fs_can_update__ and __fs_can_access__ methods for controlling update and access.
 * 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
