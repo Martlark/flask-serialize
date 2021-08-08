@@ -4,6 +4,11 @@ from flask import request, jsonify, abort, current_app
 from permissive_dict import PermissiveDict
 
 
+class FlaskSerializeNoDb(Exception):
+    def __init__(self):
+        super().__init__('FlaskSerializeMixin property "db" is not set')
+
+
 class FlaskSerializeMixin:
     """
     Base mix in class to implement serialization and update methods for use
@@ -501,6 +506,9 @@ class FlaskSerializeMixin:
 
         :return: the new created item
         """
+        if not cls.db:
+            raise FlaskSerializeNoDb()
+
         new_item = cls(**kwargs)
 
         __fs_create_fields__ = list(new_item.__fs_create_fields__)
@@ -514,19 +522,15 @@ class FlaskSerializeMixin:
 
         try:
             json_data = request.get_json(force=True)
-            if len(json_data) > 0:
-                for field in __fs_create_fields__:
-                    if cls.db and isinstance(field, cls.db.Column):
-                        field = field.name
-                    if field in json_data:
-                        value = json_data.get(field)
-                        setattr(new_item, field, new_item.__convert_value(field, value))
         except:
+            json_data = request.form
+
+        if len(json_data) > 0:
             for field in __fs_create_fields__:
                 if cls.db and isinstance(field, cls.db.Column):
                     field = field.name
-                if field in request.form:
-                    value = request.form.get(field)
+                if field in json_data:
+                    value = json_data.get(field)
                     setattr(new_item, field, new_item.__convert_value(field, value))
 
         new_item.__fs_verify__(create=True)
@@ -535,6 +539,24 @@ class FlaskSerializeMixin:
         cls.db.session.commit()
         new_item.__fs_after_commit__(create=True)
         return new_item
+
+    def __request_update(self, json_data):
+        """
+        update the current db object
+
+        :return:
+        """
+        if not self.__fs_can_update__():
+            return False
+        self.fs_update_from_dict(json_data)
+        self.__fs_verify__()
+        self.__fs_update_timestamp__()
+        if not self.db:
+            raise FlaskSerializeNoDb()
+        self.db.session.add(self)
+        self.db.session.commit()
+        self.__fs_after_commit__()
+        return True
 
     def fs_request_update_form(self):
         """
@@ -546,18 +568,7 @@ class FlaskSerializeMixin:
         """
         if request.content_type == "application/json" or request.method == "PUT":
             return self.fs_request_update_json()
-        else:
-            self.fs_update_from_dict(request.form)
-        if not self.__fs_can_update__():
-            return False
-        self.__fs_verify__()
-        self.__fs_update_timestamp__()
-        if not self.db:
-            raise Exception('FlaskSerializeMixin property "db" is not set')
-        self.db.session.add(self)
-        self.db.session.commit()
-        self.__fs_after_commit__(self)
-        return True
+        return self.__request_update(request.form)
 
     def fs_request_update_json(self):
         """
@@ -567,25 +578,16 @@ class FlaskSerializeMixin:
         :return: True if item updated
         """
 
-        if not self.__fs_can_update__():
-            return False
         try:
             json_data = request.get_json(force=True)
         except Exception as e:
             json_data = request.values
             if len(json_data) == 0:
                 current_app.logger.exception(e)
+                return False
 
-        self.fs_update_from_dict(json_data)
-
-        self.__fs_verify__()
-        self.__fs_update_timestamp__()
-        if not self.db:
-            raise Exception('FlaskSerializeMixin property "db" is not set')
-        self.db.session.add(self)
-        self.db.session.commit()
-        self.__fs_after_commit__()
-        return True
+        return self.__request_update(json_data
+                                     )
 
     def __fs_update_timestamp__(self):
         """
@@ -658,7 +660,7 @@ class FlaskSerializeMixin:
 
         :param: create - True if verification is for a new item
         """
-        pass
+        return True
 
     def __return_properties(self):
         """
@@ -728,10 +730,13 @@ class FlaskSerializeMixin:
 
             elif request.method == "DELETE":
                 # delete a single item
-                item.__fs_can_delete__()
-                cls.db.session.delete(item)
-                cls.db.session.commit()
-                return jsonify(dict(item=item.fs_as_dict, message="Deleted"))
+                if not cls.db:
+                    raise FlaskSerializeNoDb()
+                if item.__fs_can_delete__():
+                    cls.db.session.delete(item)
+                    cls.db.session.commit()
+                    return jsonify(dict(item=item.fs_as_dict, message="Deleted"))
+                abort(403)
 
         except Exception as e:
             return str(e), cls.__fs_http_error_code

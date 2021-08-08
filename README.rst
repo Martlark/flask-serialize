@@ -50,11 +50,11 @@ from the db and easy to use write back of models using PUT and POST.
 It is not suitable for two way serialization.  Use
 `marshmallow` or similar for more complicated systems.
 
-Example:
-========
+Example
+=======
 
-Model setup:
-------------
+Model setup
+-----------
 
 .. code:: python
 
@@ -83,6 +83,7 @@ Model setup:
         def ____fs_can_delete__(__self):
             if self.value == '1234':
                 raise Exception('Deletion not allowed.  Magic value!')
+            return True
     
         # checks if Flask-Serialize can create/update
         def __ __fs_verify__(__self, create=False):
@@ -95,8 +96,8 @@ Model setup:
         def __repr__(self):
             return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
 
-Routes setup:
----------------
+Routes setup
+------------
 
 Get a single item as json.
 
@@ -326,8 +327,8 @@ form data {body="hello", subject="something"}
                 return 'Updated'
 
 
- __fs_verify__ write and create
------------------------
+__fs_verify__ write and create
+------------------------------
 
 .. code:: python
 
@@ -337,19 +338,20 @@ form data {body="hello", subject="something"}
         :param: create - True if verification is for a new item
         """
 
-Override the mixin  __fs_verify__ method to provide control and verification
+Override the mixin `__fs_verify__` method to provide control and verification
 when updating and creating model items.  Simply raise an exception
 when there is a problem.  You can also modify `self` data before writing. See model example.
 
 Delete
 ------
 
+To control when a deletion using `fs_get_delete_put_post` override the `__fs_can_delete`
+hook.  Return False or raise and exception to prevent deletion.  Return True to
+allow deletion.
+
 .. code:: python
 
     def __fs_can_delete__(self):
-        """
-        raise exception if item cannot be deleted
-        """
 
 Override the mixin __fs_can_delete__ to provide control over when an
 item can be deleted.  Simply raise an exception
@@ -357,7 +359,7 @@ when there is a problem.   By default `__fs_can_delete__`
 calls `__fs_can_update__` unless overridden.  See model example.
 
 __fs_can_update__
-----------
+-----------------
 
 .. code:: python
 
@@ -372,7 +374,7 @@ when there is a problem or return False.  By default `__fs_can_update__`
 uses the result from `__fs_can_access__` unless overridden.
 
 __fs_can_access__
-----------
+-----------------
 
 .. code:: python
 
@@ -405,7 +407,7 @@ To exclude private fields when a user is not the admin.
 
 
 __fs_update_fields__
--------------
+--------------------
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
@@ -416,7 +418,7 @@ keys here.  By default, when `__fs_update_fields__` is empty all Model fields ca
     __fs_update_fields__ = []
 
 __fs_update_properties__
------------------
+------------------------
 
 When returning a success result from a put or post update, a dict
 composed of the property values from the `__fs_update_properties__` list is returned
@@ -445,7 +447,7 @@ This can be used to communicate from the model on the server to the JavaScript c
 interesting things from updates
 
 __fs_create_fields__
--------------
+--------------------
 
 List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
 the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
@@ -549,7 +551,7 @@ ascending use this example:
     __fs_order_by_field__ = 'id'
 
 Filtering query results using __fs_can_access__ and user.
---------------------------------------------------
+---------------------------------------------------------
 
 The ` fs_query_by_access` method can be used to filter a SQLAlchemy result set so that
 the `user` property and `__fs_can_access__` method are used to restrict to allowable items.
@@ -628,7 +630,6 @@ override the `__fs_to_date_short__` method of the mixin.  Example:
 
             return int(time.mktime(date_value.timetuple())) * 1000
 
-
 Conversion types when writing to database during update and create
 ------------------------------------------------------------------
 
@@ -660,7 +661,7 @@ Notes:
 
 * When converting values from query strings or form values the type will always be `str`.
 
-* To add or modify values from a Flask request object before they are applied to the instance use the ``__fs_before_update__`` hook.
+* To add or modify values from a Flask request object before they are applied to the instance use the `__fs_before_update__` hook.
   `__fs_verify__` is called after `__fs_before_update__`.
 
 * To undertake actions after a commit use the `__fs_after_commit__` hook.
@@ -670,7 +671,7 @@ Mixin Helper methods and properties
 ===================================
 
 fs_get_delete_put_post(item_id, user, prop_filters)
-------------------------------------------------
+---------------------------------------------------
 
 Put, get, delete, post and get-all magic method handler.
 
@@ -850,7 +851,8 @@ fs_request_update_form()
 ------------------------
 
 Use the contents of a Flask request form or request json data to update an item
-in the database.   Calls  __fs_verify__().  Returns True on success.
+in the database.   Calls `__fs_verify__()` and `__fs_can_update__()` to check
+if can update.  Returns True on success.
 
 Example:
 
@@ -966,6 +968,9 @@ Example to create using POST:
       <input name="value" value="{{form.value.data}}">
       <input type="submit">
     </form>
+
+NOTES
+=====
 
 Version 2.0.1 update notes
 --------------------------

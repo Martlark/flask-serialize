@@ -51,7 +51,7 @@ def add_setting(client, key=random_string(), value="test-value", number=0):
     return item
 
 
-def test___fs_order_by_field__(client):
+def test__fs_order_by_field__(client):
     # add plenty
     count = 10
     for z in range(count):
@@ -224,7 +224,7 @@ def test_private_field(client):
     assert "key" not in items[0]
 
 
-def test___fs_can_access___update(client):
+def test__fs_can_access___update(client):
     # create
     excluded_key = random_string()
     value = "123456789"
@@ -267,7 +267,7 @@ def test___fs_can_access___update(client):
     assert len(result_list) == 1  # no robert
 
 
-def test___fs_can_delete__(client):
+def test__fs_can_delete__(client):
     # create
     key = random_string()
     value = "1234"
@@ -393,7 +393,7 @@ def test_excluded(client):
     assert "updated" in item.fs_as_dict
 
 
-def test___fs_before_update__(client):
+def test__fs_before_update__(client):
     key = random_string()
     test_value = random_string()
     # create using post
@@ -570,6 +570,24 @@ def test_create_update_delete(client):
     assert not item
 
 
+def test_no_db(client):
+    # create
+    old_db = Setting.db
+    date_value = "2004-05-23"
+    DateTest.db = None
+    rv = client.post("/datetest", data=dict(a_date=date_value))
+    DateTest.db = old_db
+    assert rv.status_code == 400, rv.data
+    assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+    rv = client.post("/datetest", data=dict(a_date=date_value))
+    new_id = rv.json['id']
+    DateTest.db = None
+    rv = client.put(f"/datetest/{new_id}", data=dict(a_date=date_value))
+    assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+    rv = client.delete(f"/datetest/{new_id}", data=dict(a_date=date_value))
+    assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+    DateTest.db = old_db
+
 def test_form_page(client):
     # create
     key = random_string()
@@ -615,7 +633,7 @@ def test_form_page(client):
     assert b"Missing key" in rv.data
 
 
-def test_default___fs_create_fields__(client):
+def test_default__fs_create_fields__(client):
     key = random_string()
     value = random_string()
     prop_test = random_string()
@@ -636,7 +654,7 @@ def test_default___fs_create_fields__(client):
     Setting.__fs_create_fields__ = old___fs_create_fields__
 
 
-def test_simple_model___fs_update_fields__(client):
+def test_simple_model__fs_update_fields__(client):
     value = random_string()
     # add
     item = SimpleModel(value=value)

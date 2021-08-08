@@ -212,7 +212,7 @@ def route_setting_form(item_id=None):
 
 
 @app.route("/datetest", methods=["POST"])
-@app.route("/datetest/<int:item_id>", methods=["PUT"])
+@app.route("/datetest/<int:item_id>", methods=["PUT", "DELETE"])
 def route_datetest(item_id=None):
     return DateTest.fs_get_delete_put_post(item_id)
 
@@ -388,6 +388,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
     def __fs_can_delete__(self):
         if self.value == "1234":
             raise Exception("Deletion not allowed.  Magic value!")
+        return True
 
     # checks if Flask-Serialize can create/update
     def __fs_verify__(self, create=False):
