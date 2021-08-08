@@ -737,17 +737,13 @@ you do what you like.  `self` is the updated or created (create==True) item.
 __fs_before_update__(cls, data_dict)
 ------------------------------------
 
-.. code:: python
-
-    def __fs_before_update__(cls, data_dict):
-        """
-        param: data_dict: a dictionary of new data to apply to the item
-        return: the new data_dict to use when updating
-        """
+ * data_dict: a dictionary of new data to apply to the item
+ * return: the new `data_dict` to use when updating
 
 Hook to call before any of `fs_update_from_dict`, `fs_request_update_form`, `fs_request_update_json` is called so that
-you may alter or add update values before the item is written to self in preparation for update to db.  NOTE: copy data_dict to
-a normal dict as it may be an Immutable type from the request object.
+you may alter or add update values before the item is written to `self` in preparation for update to db.
+
+NOTE: copy `data_dict` to a normal dict as it may be an `Immutable` type from the request object.
 
 Example, make sure active is 'n' if no value from a request.
 
@@ -851,7 +847,7 @@ Create a score item with the parent being a course.
         return Score.fs_request_create_form(course_id=course.id).fs_as_dict
 
 fs_request_update_form()
----------------------
+------------------------
 
 Use the contents of a Flask request form or request json data to update an item
 in the database.   Calls  __fs_verify__().  Returns True on success.
@@ -971,6 +967,14 @@ Example to create using POST:
       <input type="submit">
     </form>
 
+Version 2.0.1 update notes
+--------------------------
+
+Version 2.0.1 changes most of the properties, hooks and methods to use a more normal Python naming convention.
+
+ * Regularly called mixin methods now start with `fs_`.
+ * Hook methods start with `__fs_` and end with `__`.
+ * Control properties start with `__fs_` and end with `__`.
 
 Release Notes
 -------------
