@@ -6,3 +6,4 @@ dist
 /.travis.yml
 build
 /test/test.db
+/test/after_commit.tmp

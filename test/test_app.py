@@ -47,13 +47,13 @@ def add_setting(client, key=random_string(), value='test-value', number=0):
     return item
 
 
-def test_order_by_field(client):
+def test___fs_order_by_field__(client):
     # add plenty
     count = 10
     for z in range(count):
         add_setting(client, key=str(z), value=str(z + 1))
 
-    Setting.order_by_field = 'id'
+    Setting.__fs_order_by_field__ = 'id'
     rv = client.get('/setting_get_all')
     assert rv.status_code == 200
     json_settings = rv.json
@@ -62,14 +62,14 @@ def test_order_by_field(client):
     for z in range(count):
         assert json_settings[z]['id'] == sorted_list[z]['id']
     # ascending.
-    Setting.order_by_field = 'value'
+    Setting.__fs_order_by_field__ = 'value'
     rv = client.get('/setting_get_all')
     json_settings = rv.json
     sorted_list = sorted(json_settings, key=lambda i: i['value'])
     for z in range(count):
         assert json_settings[z]['value'] == sorted_list[z]['value']
-    Setting.order_by_field = None
-    Setting.order_by_field_desc = 'value'
+    Setting.__fs_order_by_field__ = None
+    Setting.__fs_order_by_field_desc__ = 'value'
     # descending
     rv = client.get('/setting_get_all')
     json_settings = rv.json
@@ -108,13 +108,13 @@ def test_get_all(client):
     assert rv.json[0]['key'] == key
     with app.app_context():
         # filter by
-        rv = Setting.json_filter_by(key=key)
+        rv = Setting.fs_json_filter_by(key=key)
         assert rv.json[0]['key'] == key
     # all as dict list
     result = Setting.query.all()
-    dict_list = Setting.dict_list(result)
-    assert len(dict_list) == 1
-    assert dict_list[0]['key'] == key
+    fs_dict_list = Setting.fs_dict_list(result)
+    assert len(fs_dict_list) == 1
+    assert fs_dict_list[0]['key'] == key
 
 
 def test_get_user(client):
@@ -137,7 +137,7 @@ def test_get_user(client):
     assert len(rv.json) == 0
     user_404 = None
     try:
-        user_404 = Setting.get_by_user_or_404(item_id=item['id'], user='not-here')
+        user_404 = Setting.fs_get_by_user_or_404(item_id=item['id'], user='not-here')
     except Exception as e:
         assert '404 Not Found:' in str(e)
     assert user_404 is None
@@ -197,11 +197,11 @@ def test_private_field(client):
 
     # value is excluded from dict list
     query = Setting.query.filter_by(setting_type='test')
-    items = Setting.dict_list(query)
+    items = Setting.fs_dict_list(query)
     assert 'key' not in items[0]
 
 
-def test_can_access_update(client):
+def test___fs_can_access___update(client):
     # create
     excluded_key = random_string()
     value = '123456789'
@@ -218,28 +218,28 @@ def test_can_access_update(client):
 
     # one value is excluded
     with app.app_context():
-        r = Setting.json_first(key=excluded_key)
+        r = Setting.fs_json_first(key=excluded_key)
         assert r.status_code == 200
         assert r.response == [b'{}\n']
     # value is excluded from dict list
     query = Setting.query.filter_by(setting_type='test')
-    items = Setting.dict_list(query)
+    items = Setting.fs_dict_list(query)
     assert len(items) == 2
     with app.app_context():
-        r = Setting.json_list(query)
+        r = Setting.fs_json_list(query)
         l = json.loads(r.response[0])
         assert len(l) == 2
     # try to update
     rv = client.put('/setting_update/{}'.format(excluded_id), json=dict(active=False))
     assert rv.status_code != 200
     assert b'Error updating item: Update not allowed.  Magic value!' == rv.data
-    result_list = Setting.query_by_access(setting_type='test')
+    result_list = Setting. fs_query_by_access(setting_type='test')
     assert len(result_list) == 2
-    result_list = Setting.query_by_access(user='Andrew', setting_type='test')
+    result_list = Setting. fs_query_by_access(user='Andrew', setting_type='test')
     assert len(result_list) == 1  # no robert
 
 
-def test_can_delete(client):
+def test___fs_can_delete__(client):
     # create
     key = random_string()
     value = '1234'
@@ -260,7 +260,7 @@ def test_column_conversion(client):
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, lob=value))
     # get
     item = Setting.query.filter_by(key=key).first()
-    assert item.as_dict['lob'] == '12.34'
+    assert item.fs_as_dict['lob'] == '12.34'
 
 
 def test_update_create_type_conversion(client):
@@ -308,12 +308,12 @@ def test_convert_type(client):
     float_value_to_convert = 23.4
     int_value_to_convert = 45
     convert_multiple = 2
-    # old_convert_type = Setting.convert_types
-    # Setting.convert_types = [{'type': int, 'method': lambda n: int(n) * 2},
+    # old_convert_type = Setting.__fs_convert_types__
+    # Setting.__fs_convert_types__ = [{'type': int, 'method': lambda n: int(n) * 2},
     #                          {'type': float, 'method': lambda n: float(n) * 2}]
     rv = client.put('/setting_update/{}'.format(item.id),
                     json=dict(number=int_value_to_convert, floaty=float_value_to_convert))
-    # Setting.convert_types = old_convert_type
+    # Setting.__fs_convert_types__ = old_convert_type
     assert rv.status_code == 200
     assert rv.data == b'Updated'
     item = Setting.query.filter_by(key=key).first()
@@ -349,11 +349,11 @@ def test_excluded(client):
     assert 'created' not in rv.json
     assert 'updated' not in rv.json
     assert rv.status_code == 200
-    assert 'created' not in item.as_dict
-    assert 'updated' in item.as_dict
+    assert 'created' not in item.fs_as_dict
+    assert 'updated' in item.fs_as_dict
 
 
-def test_before_update(client):
+def test___fs_before_update__(client):
     key = random_string()
     test_value = random_string()
     # create using post
@@ -364,7 +364,7 @@ def test_before_update(client):
     assert rv.json['value'] == test_value
     assert item.value == test_value
     assert item.number == 20
-    # update using post - missing active should become 'n' via before_update hook
+    # update using post - missing active should become 'n' via __fs_before_update__ hook
     new_value = random_string()
     rv = client.post('/setting_post/{}'.format(item.id),
                      data=dict(setting_type='test', key=key, value=new_value, number=10))
@@ -374,7 +374,7 @@ def test_before_update(client):
     assert 'n' == item.active
 
 
-def test_get_delete_put_post(client):
+def test_fs_get_delete_put_post(client):
     key = random_string()
     # create using post
     rv = client.post('/setting_post', data=dict(setting_type='test', key=key, value='test-value', number=10))
@@ -390,7 +390,7 @@ def test_get_delete_put_post(client):
                      data=dict(setting_type='test', key=key, value=new_value, number=10))
     assert rv.status_code == 200
     assert rv.json['message'] == 'Updated'
-    # test update_properties are returned
+    # test __fs_update_properties__ are returned
     assert rv.json['properties']['prop_test'] == 'prop:' + new_value
     assert rv.json['item']['key'] == key
     item = Setting.query.filter_by(key=key).first()
@@ -444,14 +444,14 @@ def test_create_update_json(client):
     dt_now = datetime.utcnow()
     rv = client.post(f'/setting_post/{item.id}',
                      json=dict(setting_type='test', key=key, value=value, number=10,
-                               scheduled=dt_now.strftime(Setting.scheduled_date_format)))
+                               scheduled=dt_now.strftime(Setting.__fs_scheduled_date_format__)))
     assert rv.status_code == 200, rv.data
     after_commit = Path('after_commit.tmp').read_text()
-    assert after_commit == f"""fs_after_commit: {False} {item.id}"""
+    assert after_commit == f""" __fs_after_commit__: {False} {item.id}"""
     item = Setting.query.filter_by(key=key).first()
     assert item
     assert item.value == value
-    assert item.scheduled.strftime(Setting.scheduled_date_format) == dt_now.strftime(Setting.scheduled_date_format)
+    assert item.scheduled.strftime(Setting.__fs_scheduled_date_format__) == dt_now.strftime(Setting.__fs_scheduled_date_format__)
 
 
 def test_create_update_delete(client):
@@ -462,16 +462,16 @@ def test_create_update_delete(client):
     assert rv.status_code == 302, rv.data
     item = Setting.query.filter_by(key=key).first()
     after_commit = Path('after_commit.tmp').read_text()
-    assert after_commit.startswith(f"""fs_after_commit: {True} {item.id}""")
+    assert after_commit.startswith(f""" __fs_after_commit__: {True} {item.id}""")
     assert item
     assert item.value == value
-    # test that number is not set on creation as it is not included in create_fields
+    # test that number is not set on creation as it is not included in __fs_create_fields__
     assert item.number == 20
     old_updated = item.updated
 
     new_value = random_string()
-    item.update_from_dict(dict(value=new_value))
-    assert item.previous_field_value['value'] == value
+    item.fs_update_from_dict(dict(value=new_value))
+    assert item.__fs_previous_field_value__['value'] == value
     assert item.value == new_value
     # set to new value
     new_value = random_string()
@@ -511,10 +511,10 @@ def test_form_page(client):
     assert rv.status_code == 302
     item = Setting.query.filter_by(key=key).first()
     after_commit = Path('after_commit.tmp').read_text()
-    assert after_commit.startswith(f"""fs_after_commit: {True} {item.id}""")
+    assert after_commit.startswith(f""" __fs_after_commit__: {True} {item.id}""")
     assert item
     assert item.value == 'test-value'
-    # test that number is not set on creation as it is not included in create_fields
+    # test that number is not set on creation as it is not included in __fs_create_fields__
     assert item.number == 20
     # set to new value
     new_value = random_string()
@@ -538,14 +538,14 @@ def test_form_page(client):
     assert b'Missing key' in rv.data
 
 
-def test_default_create_fields(client):
+def test_default___fs_create_fields__(client):
     key = random_string()
     value = random_string()
     prop_test = random_string()
     # add
-    old_create_fields = Setting.create_fields
+    old___fs_create_fields__ = Setting.__fs_create_fields__
     # remove fields
-    Setting.create_fields = []
+    Setting.__fs_create_fields__ = []
     rv = client.post('/setting_add', data=dict(setting_type='test', key=key, value=value, prop_test=prop_test))
     assert 302 == rv.status_code, rv.data
     # assert it was created
@@ -553,10 +553,10 @@ def test_default_create_fields(client):
     assert item.key == key, item
     assert item.value == value, item
     assert item.prop_test == 'prop:' + value, item
-    Setting.create_fields = old_create_fields
+    Setting.__fs_create_fields__ = old___fs_create_fields__
 
 
-def test_simple_model_update_fields(client):
+def test_simple_model___fs_update_fields__(client):
     value = random_string()
     # add
     item = SimpleModel(value=value)
@@ -590,11 +590,11 @@ def test_override_datetime_conversion(client):
     item = Setting.query.filter_by(key=key).first()
     sub = item.sub_settings[0]
     unix_time = int(time.mktime(sub.created.timetuple())) * 1000
-    assert type(sub.as_dict['created']) == int
-    assert sub.as_dict['created'] == unix_time
+    assert type(sub.fs_as_dict['created']) == int
+    assert sub.fs_as_dict['created'] == unix_time
 
 
-def test_json_get(client):
+def test_fs_json_get(client):
     key = random_string()
     test_value = random_string()
     setting_type = random_string()
@@ -613,11 +613,11 @@ def test_json_get(client):
     assert rv.status_code == 200
     assert rv.json == {}
     # get first
-    rv = client.get('/setting_json_first/{}'.format(item.key))
+    rv = client.get('/setting_fs_json_first/{}'.format(item.key))
     assert rv.json['value'] == test_value
     assert rv.json['key'] == key
     assert rv.json['setting_type'] == setting_type
-    assert client.get('/setting_json_first/{}'.format(random_string())).json == {}
+    assert client.get('/setting_fs_json_first/{}'.format(random_string())).json == {}
 
 
 def test_get_0_is_not_null(client):
@@ -651,5 +651,5 @@ def test_timestamp_is_updated_and_can_be_overridden(client):
     assert 200 == client.put('/sub_setting_put/{}'.format(sub_item_id), json=dict(flong=new_value)).status_code
     updated_item = SubSetting.query.get_or_404(sub_item_id)
     assert updated_item.flong == new_value
-    # test custom update works and that timestamp_fields works
+    # test custom update works and that __fs_timestamp_fields__ works
     assert updated_when_created > updated_item.sub_updated

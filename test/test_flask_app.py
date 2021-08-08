@@ -63,34 +63,34 @@ def page_index(item_id=None):
 @app.route('/setting_get/<int:item_id>', methods=['GET'])
 @app.route('/setting_user/<user>', methods=['GET'])
 @app.route('/setting_id_user/<int:item_id>/<user>', methods=['GET'])
-def route_setting_get_delete_put_post(item_id=None, user='Andrew'):
+def route_setting_fs_get_delete_put_post(item_id=None, user='Andrew'):
     key = request.args.get('key')
     if key and request.method == 'GET':
-        return Setting.get_delete_put_post(item_id, prop_filters={"key": key})
-    return Setting.get_delete_put_post(item_id, user)
+        return Setting.fs_get_delete_put_post(item_id, prop_filters={"key": key})
+    return Setting.fs_get_delete_put_post(item_id, user)
 
 
 @app.route('/sub_setting_delete/<int:item_id>', methods=['DELETE'])
 @app.route('/sub_setting_put/<int:item_id>', methods=['PUT', 'POST'])
 @app.route('/sub_setting_get/<int:item_id>', methods=['GET'])
-def route_sub_setting_get_delete_put_post(item_id=None, user='fake'):
-    return SubSetting.get_delete_put_post(item_id, user)
+def route_sub_setting_fs_get_delete_put_post(item_id=None, user='fake'):
+    return SubSetting.fs_get_delete_put_post(item_id, user)
 
 
 @app.route('/simple_add', methods=['POST'])
 @app.route('/simple_edit/<int:item_id>', methods=['PUT', 'POST'])
-def route_simple_get_delete_put_post(item_id=None, user=None):
-    return SimpleModel.get_delete_put_post(item_id, user)
+def route_simple_fs_get_delete_put_post(item_id=None, user=None):
+    return SimpleModel.fs_get_delete_put_post(item_id, user)
 
 
 @app.route('/setting_get_json/<int:item_id>', methods=['GET'])
 def route_setting_get_json(item_id):
-    return Setting.json_get(item_id)
+    return Setting.fs_json_get(item_id)
 
 
-@app.route('/setting_json_first/<key>', methods=['GET'])
-def route_setting_json_first(key):
-    return Setting.json_first(key=key)
+@app.route('/setting_fs_json_first/<key>', methods=['GET'])
+def route_setting_fs_json_first(key):
+    return Setting.fs_json_first(key=key)
 
 
 @app.route('/setting_get_key/<key>', methods=['GET'])
@@ -101,7 +101,7 @@ def route_setting_get_key(key):
     :param key:
     :return:
     """
-    return Setting.query.filter_by(key=key).first().as_json
+    return Setting.query.filter_by(key=key).first().fs_as_json
 
 
 @app.route('/setting_json_api/<int:id>', methods=['GET'])
@@ -120,7 +120,7 @@ def route_setting_get_json_api_key(id):
 
 @app.route('/setting_delete/<int:item_id>', methods=['DELETE'])
 def route_setting_delete(item_id):
-    return Setting.get_delete_put_post(item_id)
+    return Setting.fs_get_delete_put_post(item_id)
 
 
 @app.route('/setting_update/<int:item_id>', methods=['PUT'])
@@ -133,7 +133,7 @@ def route_setting_update(item_id):
     """
     item = Setting.query.get_or_404(item_id)
     try:
-        item.request_update_json()
+        item.fs_request_update_json()
     except Exception as e:
         print(e)
         return Response('Error updating item: ' + str(e), 500)
@@ -150,7 +150,7 @@ def route_sub_setting_add(setting_id):
     """
     setting = Setting.query.get_or_404(setting_id)
     try:
-        SubSetting.request_create_form(setting_id=setting.id)
+        SubSetting.fs_request_create_form(setting_id=setting.id)
     except Exception as e:
         return str(e), 500
     return redirect(url_for("route_setting_edit_add", item_id=setting_id))
@@ -168,14 +168,14 @@ def route_setting_edit_add(item_id=None):
     if form.validate_on_submit():
         if item_id:
             try:
-                item.request_update_form()
+                item.fs_request_update_form()
             except Exception as e:
                 print(e)
                 return Response('Error updating item: ' + str(e), 500)
             return redirect(url_for('route_setting_edit_add', item_id=item_id))
         else:
             try:
-                Setting.request_create_form()
+                Setting.fs_request_create_form()
                 return redirect(url_for('page_index'))
             except Exception as e:
                 print(e)
@@ -196,7 +196,7 @@ def route_setting_form(item_id=None):
 @app.route('/datetest', methods=['POST'])
 @app.route('/datetest/<int:item_id>', methods=['PUT'])
 def route_datetest(item_id=None):
-    return DateTest.get_delete_put_post(item_id)
+    return DateTest.fs_get_delete_put_post(item_id)
 
 
 # =========================
@@ -215,16 +215,16 @@ class SubSetting(fs_mixin, db.Model):
     flong = db.Column(db.String(120), index=True, default='flang')
     boolean = db.Column(db.Boolean, default=True)
 
-    fs_user_field = 'fake_user'
-    update_properties = create_fields = update_fields = ['flong', 'boolean']
-    convert_types = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'},
+    __fs_user_field__ = 'fake_user'
+    __fs_update_properties__ = __fs_create_fields__ = __fs_update_fields__ = ['flong', 'boolean']
+    __fs_convert_types__ = [{'type': bool, 'method': lambda v: (type(v) == bool and v) or str(v).lower() == 'true'},
                      ]
 
     @staticmethod
     def one_day_ago():
         return datetime.utcnow() - timedelta(days=1)
 
-    def to_date_short(self, date_value):
+    def  __fs_to_date_short__(self, date_value):
         """
         override DATETIME conversion behaviour to return unix time
 
@@ -236,8 +236,8 @@ class SubSetting(fs_mixin, db.Model):
 
         return int(time.mktime(date_value.timetuple())) * 1000
 
-    timestamp_fields = ['sub_updated']
-    timestamp_stamper = one_day_ago
+    __fs_timestamp_fields__ = ['sub_updated']
+    __fs_timestamp_stamper__ = one_day_ago
 
 
 class Single(fs_mixin, db.Model):
@@ -249,7 +249,7 @@ class Single(fs_mixin, db.Model):
 class DateTest(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     a_date = db.Column(db.DateTime, default=datetime.utcnow)
-    update_fields = create_fields = ['a_date']
+    __fs_update_fields__ = __fs_create_fields__ = ['a_date']
 
 
 class Setting(fs_mixin, FormPageMixin, db.Model):
@@ -273,21 +273,21 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
     single = db.relationship('Single', backref='setting', uselist=False, cascade="all, delete-orphan")
 
     # serializer fields
-    update_fields = [setting_type, 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
-    create_fields = [setting_type, 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
-    exclude_serialize_fields = ['created']
-    exclude_json_serialize_fields = ['updated']
-    relationship_fields = ['sub_settings', 'single']
-    update_properties = ['prop_test']
-    order_by_field = 'value'
+    __fs_update_fields__ = [setting_type, 'value', 'key', 'active', 'number', 'floaty', 'scheduled', 'deci', 'lob']
+    __fs_create_fields__ = [setting_type, 'value', 'key', 'active', 'user', 'floaty', 'number', 'deci', 'lob']
+    __fs_exclude_serialize_fields__ = ['created']
+    __fs_exclude_json_serialize_fields__ = ['updated']
+    __fs_relationship_fields__ = ['sub_settings', 'single']
+    __fs_update_properties__ = ['prop_test']
+    __fs_order_by_field__ = 'value'
     # lob
-    column_type_converters = {'LOB': lambda v: str(v)}
+    __fs_column_type_converters__ = {'LOB': lambda v: str(v)}
     # convert types
-    scheduled_date_format = "%Y-%m-%d %H:%M:%S"
-    convert_types = [
+    __fs_scheduled_date_format__ = "%Y-%m-%d %H:%M:%S"
+    __fs_convert_types__ = [
         {'type': bool, 'method': lambda v: 'y' if (type(v) == bool and v) or str(v).lower() == 'true' else 'n'},
         {'type': int, 'method': lambda n: int(n) * 2},
-        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.scheduled_date_format)},
+        {'type': datetime, 'method': lambda n: datetime.strptime(n, Setting.__fs_scheduled_date_format__)},
         {'type': bytes, 'method': lambda v: v.encode()}
     ]
     # form_page
@@ -304,34 +304,34 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         else:
             return None
 
-    def before_update(self, data_dict):
+    def __fs_before_update__(self, data_dict):
         d = dict(data_dict)
         d['active'] = d.get('active', 'n')
         return d
 
-    def fs_after_commit(self, create=False):
+    def  __fs_after_commit__(self, create=False):
         with open('after_commit.tmp', 'w') as f:
-            f.write(f"""fs_after_commit: {create} {self.id}""")
+            f.write(f""" __fs_after_commit__: {create} {self.id}""")
 
     # checks if Flask-Serialize can access
-    def can_access(self):
+    def __fs_can_access__(self):
         if self.value == '123456789':
             return False
         return True
 
     # checks if Flask-Serialize can access
-    def can_update(self):
-        if not self.can_access():
+    def __fs_can_update__(self):
+        if not self.__fs_can_access__():
             raise Exception('Update not allowed.  Magic value!')
         return True
 
     # checks if Flask-Serialize can delete
-    def can_delete(self):
+    def __fs_can_delete__(self):
         if self.value == '1234':
             raise Exception('Deletion not allowed.  Magic value!')
 
     # checks if Flask-Serialize can create/update
-    def verify(self, create=False):
+    def  __fs_verify__(self, create=False):
         if len(self.key or '') < 1:
             raise ValidationError('Missing key')
 

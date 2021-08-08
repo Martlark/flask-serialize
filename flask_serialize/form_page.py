@@ -39,13 +39,13 @@ class FormPageMixin:
         if form.validate_on_submit():
             try:
                 if item_id:
-                    item.request_update_form()
+                    item.fs_request_update_form()
                     msg = cls.form_page_update_format.format(item)
                     if msg:
                         flash(msg)
                     return redirect(url_for(cls.form_page_route_update, item_id=item_id))
                 else:
-                    new_item = cls.request_create_form()
+                    new_item = cls.fs_request_create_form()
                     msg = cls.form_page_create_format.format(new_item)
                     if msg:
                         flash(msg)
