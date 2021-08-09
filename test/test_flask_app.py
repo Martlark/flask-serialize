@@ -217,6 +217,28 @@ def route_datetest(item_id=None):
     return DateTest.fs_get_delete_put_post(item_id)
 
 
+@app.route("/badmodel", methods=["GET", "POST"])
+@app.route("/badmodel/<int:item_id>", methods=["GET", "PUT", "DELETE"])
+def route_badmodel(item_id=None):
+    return BadModel.fs_get_delete_put_post(item_id)
+
+
+@app.route("/user", methods=["GET", "POST"])
+@app.route("/user/<int:item_id>", methods=["GET", "PUT", "DELETE"])
+def route_user(item_id=None):
+    return User.fs_get_delete_put_post(item_id)
+
+
+@app.route("/user_add_data/<int:item_id>", methods=["POST"])
+def route_user_add_data(item_id):
+    value = request.form.get('data', '')
+    user = User.query.get_or_404(item_id)
+    user_data = UserData(user=user, value=value)
+    db.session.add(user_data)
+    db.session.commit()
+    return user.fs_as_json
+
+
 # =========================
 # MODELS
 # =========================
@@ -263,6 +285,23 @@ class SubSetting(fs_mixin, db.Model):
 
     __fs_timestamp_fields__ = ["sub_updated"]
     __fs_timestamp_stamper__ = one_day_ago
+
+
+class User(fs_mixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120))
+    data_items = db.relationship(
+        "UserData", backref="user", cascade="all, delete-orphan"
+    )
+
+    __fs_relationship_fields__ = ['data_items']
+
+
+class UserData(fs_mixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.String(120), default="value")
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
 
 
 class Single(fs_mixin, db.Model):
@@ -458,6 +497,15 @@ class SimpleModel(fs_mixin, db.Model):
 
     def __repr__(self):
         return "<SimpleModel %r>" % (self.value)
+
+
+class BadModel(fs_mixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    value = db.Column(db.String(30), default="")
+    __fs_column_type_converters__ = {'VARCHAR': lambda x: x / 0}
+
+    def __repr__(self):
+        return "<BadModel %r>" % (self.value)
 
 
 if __name__ == "__main__":

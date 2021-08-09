@@ -553,8 +553,8 @@ ascending use this example:
 Filtering query results using __fs_can_access__ and user.
 ---------------------------------------------------------
 
-The ` fs_query_by_access` method can be used to filter a SQLAlchemy result set so that
-the `user` property and `__fs_can_access__` method are used to restrict to allowable items.
+The `fs_query_by_access` method can be used to filter a SQLAlchemy result set so that
+the `user` property and `__fs_can_access__` hook method are used to restrict to allowable items.
 
 Example:
 
@@ -606,7 +606,7 @@ To convert VARCHAR(100) to a string:
 
 .. code:: python
 
-    __fs_column_type_converters__['VARCHAR(100)'] = lambda v: str(v)
+    __fs_column_type_converters__ = {'VARCHAR': lambda v: str(v)}
 
 To change DATETIME conversion behaviour, either change the DATETIME column_type_converter or
 override the `__fs_to_date_short__` method of the mixin.  Example:

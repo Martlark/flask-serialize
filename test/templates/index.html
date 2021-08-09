@@ -34,4 +34,12 @@
     <h3>JSON Settings ALL</h3>
     <button id="get_json_settings_all">Get All</button>
     <ul id="json_settings_all"></ul>
+    <h3>Add New Bad Model</h3>
+    <form method="POST" action="{{ url_for('route_badmodel') }}">
+        <label>value: <input name="value" value="{{ value }}"></label>
+        <input type="submit">
+    </form>
+    <h3>JSON BadModel get</h3>
+    <button id="get_badmodel">Get Bad</button>
+    <ul id="badmodel"></ul>
 {% endblock %}

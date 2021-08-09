@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-from flask import g
 
 from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
 
@@ -333,6 +332,16 @@ def test_update_create_type_conversion(client):
         assert new_boolean == ss.boolean
 
 
+def test_bad_convert_type(client):
+    value = random_string()
+    rv = client.post(
+        "/badmodel",
+        data=dict(value=value),
+    )
+    assert 200 == rv.status_code
+    assert "Failed to convert [value]" in rv.data.decode('utf-8'), rv
+
+
 def test_convert_type(client):
     # add conversion type
     key = random_string()
@@ -588,6 +597,7 @@ def test_no_db(client):
     assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
     DateTest.db = old_db
 
+
 def test_form_page(client):
     # create
     key = random_string()
@@ -751,12 +761,26 @@ def test_timestamp_is_updated_and_can_be_overridden(client):
     # update using put
     new_value = random_string()
     assert (
-        200
-        == client.put(
-            "/sub_setting_put/{}".format(sub_item_id), json=dict(flong=new_value)
-        ).status_code
+            200
+            == client.put(
+        "/sub_setting_put/{}".format(sub_item_id), json=dict(flong=new_value)
+    ).status_code
     )
     updated_item = SubSetting.query.get_or_404(sub_item_id)
     assert updated_item.flong == new_value
     # test custom update works and that __fs_timestamp_fields__ works
     assert updated_when_created > updated_item.sub_updated
+
+
+def test_user(client):
+    test_value = random_string()
+    user_name = random_string()
+    # test add user
+    # get by id
+    rv = client.post("/user", data={"name": user_name})
+    assert rv.json["name"] == user_name
+    user_id = rv.json["id"]
+    # add data
+    rv = client.post(f"/user_add_data/{user_id}", data={"data": test_value})
+    assert rv.json["name"] == user_name
+    assert test_value in [item.get('value') for item in rv.json["data_items"]]
