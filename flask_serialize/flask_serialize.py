@@ -701,8 +701,8 @@ class FlaskSerializeMixin:
                 return jsonify(
                     dict(
                         message="Updated",
-                        item=item.__as_exclude_json_dict(),
-                        properties=item.__return_properties(),
+                        item=item.__fs_as_exclude_json_dict(),
+                        properties=item.__fs_return_properties(),
                     )
                 )
 
