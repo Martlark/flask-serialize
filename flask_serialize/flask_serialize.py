@@ -49,11 +49,11 @@ class FlaskSerializeMixin:
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
-    __model_props = {}
+    __fs_model_props = {}
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __version__ = "2.0.1"
+    __fs_version__ = "2.0.1"
 
     def __fs_before_update__(self, data_dict:dict) -> dict:
         """
@@ -157,7 +157,7 @@ class FlaskSerializeMixin:
         """
         # ascending
         items = [
-            item.__as_exclude_json_dict()
+            item.__fs_as_exclude_json_dict()
             for item in query_result
             if item.__fs_can_access__()
         ]
@@ -193,7 +193,7 @@ class FlaskSerializeMixin:
         :return: list of dict objects
         """
         return [
-            item.__as_exclude_json_dict()
+            item.__fs_as_exclude_json_dict()
             for item in query_result
             if item.__fs_can_access__()
         ]
@@ -205,7 +205,7 @@ class FlaskSerializeMixin:
 
         :return: flask response json object
         """
-        return jsonify(self.__as_exclude_json_dict())
+        return jsonify(self.__fs_as_exclude_json_dict())
 
     def __fs_private_field__(self, field_name):
         """
@@ -216,7 +216,7 @@ class FlaskSerializeMixin:
         """
         return False
 
-    def __as_exclude_json_dict(self):
+    def __fs_as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
         without fields in __fs_exclude_json_serialize_fields__ and __fs_exclude_serialize_fields__
@@ -257,7 +257,7 @@ class FlaskSerializeMixin:
         return value
 
     @staticmethod
-    def __relationship_converter(relationships):
+    def __fs_relationship_converter(relationships):
         """
         convert a child SQLAlchemy result set into a python
         dictionary list.
@@ -270,7 +270,7 @@ class FlaskSerializeMixin:
         return [item.fs_as_dict for item in relationships]
 
     @staticmethod
-    def __lob_converter(value):
+    def __fs_lob_converter(value):
         """
         convert a LOB into a decoded string
 
@@ -283,7 +283,7 @@ class FlaskSerializeMixin:
         return value
 
     @staticmethod
-    def __sqlite_date_converter(value):
+    def __fs_sqlite_date_converter(value):
         """
         convert an ISO-9 date or datetime from a form etc into a datetime as sqlite does
         not handle date conversions nicely
@@ -299,13 +299,13 @@ class FlaskSerializeMixin:
         except:
             return datetime.strptime(value, "%Y-%m-%d")
 
-    def __get_props(self):
+    def __fs_get_props(self):
         """
         get the properties for this table to be used for introspection
 
         :return: properties PermissiveDict
         """
-        props = self.__model_props.get(self.__table__)
+        props = self.__fs_model_props.get(self.__table__)
         if not props:
             props = PermissiveDict(
                 name=self.__table__.name, id=0, primary_key_field="id"
@@ -313,12 +313,12 @@ class FlaskSerializeMixin:
             props.converters = {
                 "DATETIME": self.__fs_to_date_short__,
                 "PROPERTY": self.__fs_property_converter__,
-                "RELATIONSHIP": self.__relationship_converter,
+                "RELATIONSHIP": self.__fs_relationship_converter,
                 "NUMERIC": float,
                 "DECIMAL": float,
-                "LOB": self.__lob_converter,
-                "BLOB": self.__lob_converter,
-                "CLOB": self.__lob_converter,
+                "LOB": self.__fs_lob_converter,
+                "BLOB": self.__fs_lob_converter,
+                "CLOB": self.__fs_lob_converter,
             }
 
             # SQL columns
@@ -330,7 +330,7 @@ class FlaskSerializeMixin:
             if "sqlite" in self.__table__.dialect_options:
                 props.DIALECT = "sqlite"
                 self.__fs_convert_types__.append(
-                    {"type": datetime, "method": self.__sqlite_date_converter}
+                    {"type": datetime, "method": self.__fs_sqlite_date_converter}
                 ),
             # detect primary field
             for f in field_list:
@@ -368,10 +368,10 @@ class FlaskSerializeMixin:
                             f.converter = str
                     props.field_list.append(f)
 
-            self.__model_props[self.__table__] = props
+            self.__fs_model_props[self.__table__] = props
         return props
 
-    def __get_fields(self):
+    def __fs_get_fields(self):
         """
         return a list of field objects that are valid
         using __fs_private_field__
@@ -380,7 +380,7 @@ class FlaskSerializeMixin:
         :return:
         """
         fields = []
-        for c in self.__get_props().field_list:
+        for c in self.__fs_get_props().field_list:
             if not self.__fs_private_field__(c.name):
                 fields.append(c)
         return fields
@@ -401,7 +401,7 @@ class FlaskSerializeMixin:
         # can be replaced using __fs_column_type_converters__
         d = {}
 
-        for c in self.__get_fields():
+        for c in self.__fs_get_fields():
             try:
                 d[c.name] = v = getattr(self, c.name, "")
             except Exception as e:
@@ -419,14 +419,14 @@ class FlaskSerializeMixin:
                     current_app.logger.warning(d[c.name])
         return d
 
-    def __get_update_field_type(self, field, value):
+    def __fs_get_update_field_type(self, field, value):
         """
         get the type of the update to db field from cached table properties
 
         :param field:
         :return: class of the type
         """
-        props = self.__get_props()
+        props = self.__fs_get_props()
         if props:
             for f in props.field_list:
                 if f.name == field:
@@ -453,7 +453,7 @@ class FlaskSerializeMixin:
 
         return None
 
-    def __convert_value(self, name, value):
+    def __fs_convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
         override built in conversions by setting the value of __fs_convert_types__.
@@ -470,7 +470,7 @@ class FlaskSerializeMixin:
                 value = t["method"](value)
                 return value
 
-        instance_type = self.__get_update_field_type(name, value)
+        instance_type = self.__fs_get_update_field_type(name, value)
         if instance_type:
             for t in self.__fs_convert_types__:
                 if instance_type == t["type"]:
@@ -495,8 +495,8 @@ class FlaskSerializeMixin:
         if len(__fs_create_fields__ or "") == 0:
             __fs_create_fields__ = [
                 c.name
-                for c in new_item.__get_fields()
-                if isinstance(c, cls.db.Column) and c.name != new_item.__get_props().primary_key_field
+                for c in new_item.__fs_get_fields()
+                if isinstance(c, cls.db.Column) and c.name != new_item.__fs_get_props().primary_key_field
             ]
 
         try:
@@ -510,7 +510,7 @@ class FlaskSerializeMixin:
                     field = field.name
                 if field in json_data:
                     value = json_data.get(field)
-                    setattr(new_item, field, new_item.__convert_value(field, value))
+                    setattr(new_item, field, new_item.__fs_convert_value(field, value))
 
         new_item.__fs_verify__(create=True)
         new_item.__fs_update_timestamp__()
@@ -519,7 +519,7 @@ class FlaskSerializeMixin:
         new_item.__fs_after_commit__(create=True)
         return new_item
 
-    def __request_update(self, json_data):
+    def __fs_request_update(self, json_data):
         """
         update the current db object
 
@@ -547,7 +547,7 @@ class FlaskSerializeMixin:
         """
         if request.content_type == "application/json" or request.method == "PUT":
             return self.fs_request_update_json()
-        return self.__request_update(request.form)
+        return self.__fs_request_update(request.form)
 
     def fs_request_update_json(self):
         """
@@ -565,7 +565,7 @@ class FlaskSerializeMixin:
                 current_app.logger.exception(e)
                 return False
 
-        return self.__request_update(json_data)
+        return self.__fs_request_update(json_data)
 
     def __fs_update_timestamp__(self):
         """
@@ -589,16 +589,16 @@ class FlaskSerializeMixin:
         if len(self.__fs_update_fields__ or "") == 0:
             __fs_update_fields__ = [
                 c.name
-                for c in self.__get_fields()
+                for c in self.__fs_get_fields()
                 if isinstance(c, self.db.Column)
-                   and c.name != self.__get_props().primary_key_field
+                   and c.name != self.__fs_get_props().primary_key_field
             ]
         for field in __fs_update_fields__:
             if self.db and isinstance(field, self.db.Column):
                 field = field.name
             self.__fs_previous_field_value__[field] = getattr(self, field)
             if field in data_dict:
-                setattr(self, field, self.__convert_value(field, data_dict[field]))
+                setattr(self, field, self.__fs_convert_value(field, data_dict[field]))
 
     def __fs_can_access__(self):
         """
@@ -640,7 +640,7 @@ class FlaskSerializeMixin:
         """
         return True
 
-    def __return_properties(self):
+    def __fs_return_properties(self):
         """
         when returning success codes from a put/post update return a dict
         composed of the property values from the __fs_update_properties__ list.
