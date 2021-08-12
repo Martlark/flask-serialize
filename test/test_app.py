@@ -137,20 +137,31 @@ def test_get_user(client):
     assert len(rv.json) == 1
     item = rv.json[0]
     assert item["user"] == test_user_name
-    rv = client.get("/setting_id_user/{}/{}".format(item["id"], test_user_name))
+    item_id = item['id']
+    rv = client.get("/setting_id_user/{}/{}".format(item_id, test_user_name))
     assert rv.json["user"] == test_user_name
     # should not be found
-    rv = client.get("/setting_id_user/{}/{}".format(item["id"], random_string()))
+    rv = client.get("/setting_id_user/{}/{}".format(item_id, random_string()))
     assert rv.status_code == 404
     # get all by user
     rv = client.get("/setting_user/{}".format("no-one"))
     assert len(rv.json) == 0
     user_404 = None
     try:
-        user_404 = Setting.fs_get_by_user_or_404(item_id=item["id"], user="not-here")
+        user_404 = Setting.fs_get_by_user_or_404(item_id, user="not-here")
     except Exception as e:
         assert "404 Not Found:" in str(e)
     assert user_404 is None
+    #
+    rv = client.put(f"/setting_update/{item_id}", data=dict(value="123456789"))
+    assert 200 == rv.status_code
+    try:
+        user_404 = Setting.fs_get_by_user_or_404(item_id=item_id, user=test_user_name)
+    except Exception as e:
+        assert "404 Not Found:" in str(e)
+    assert user_404 is None
+    rv = client.get("/setting_get/{}".format(item_id))
+    assert 403 == rv.status_code
 
 
 def test_get_property(client):

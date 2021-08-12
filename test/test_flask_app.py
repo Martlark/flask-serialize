@@ -78,7 +78,7 @@ def page_index(item_id=None):
 @app.route("/setting_get/<int:item_id>", methods=["GET"])
 @app.route("/setting_user/<user>", methods=["GET"])
 @app.route("/setting_id_user/<int:item_id>/<user>", methods=["GET"])
-def route_setting_fs_get_delete_put_post(item_id=None, user="Andrew"):
+def route_setting_fs_get_delete_put_post(item_id=None, user=None):
     key = request.args.get("key")
     if key and request.method == "GET":
         return Setting.fs_get_delete_put_post(item_id, prop_filters={"key": key})

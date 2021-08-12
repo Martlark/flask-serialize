@@ -675,7 +675,7 @@ class FlaskSerializeMixin:
         elif item_id is not None:
             item = cls.query.get_or_404(item_id)
             if not item.__fs_can_access__():
-                abort(404)
+                abort(403)
         elif request.method == "GET":
             # no item id get a list of items
             if user:

@@ -653,7 +653,7 @@ for unexpected types.
 
 Notes:
 
-* The order of convert types will have an effect. For example Python boolean type is derived from an int.  Make sure
+* The order of convert types will have an effect. For example, the Python boolean type is derived from an int.  Make sure
   boolean appears in the list before any int convert type.
 
 * To undertake a more specific column conversion use the `__fs_verify__` method to explicitly set the class instance value.  The
