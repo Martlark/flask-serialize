@@ -290,6 +290,9 @@ def test__can_update_returns_false(client):
     rv = client.post(f"/setting_update_post/{item.id}", data=dict(active=False))
     assert 403 == rv.status_code
 
+    rv = client.post(f"/setting_post/{item.id}", data=dict(active=False))
+    assert 403 == rv.status_code, rv.data
+
 
 def test__fs_can_delete__(client):
     # create
@@ -489,7 +492,7 @@ def test_fs_get_delete_put_post(client):
     assert 404 == rv.status_code
     # put not valid in something meant for post
     rv = client.put("/setting_post")
-    assert 400 == rv.status_code
+    assert 405 == rv.status_code
     # post fail validation
     rv = client.post("/setting_post/{}".format(item.id), data=dict(key=""))
     assert 400 == rv.status_code

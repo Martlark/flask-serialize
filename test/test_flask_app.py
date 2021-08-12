@@ -72,6 +72,7 @@ def page_index(item_id=None):
 # post, put update
 # and get single
 @app.route("/setting_post", methods=["POST", "PUT"])
+@app.route("/setting_post/<int:item_id>", methods=["POST"])
 @app.route("/setting_get_all", methods=["GET"])
 @app.route("/setting_post/<int:item_id>", methods=["POST"])
 @app.route("/setting_put/<int:item_id>", methods=["PUT"])

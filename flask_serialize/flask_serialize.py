@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from typing import Type
 
-from flask import request, jsonify, abort, current_app
+from flask import request, jsonify, abort, current_app, Response
 from permissive_dict import PermissiveDict
 
 
@@ -675,7 +675,7 @@ class FlaskSerializeMixin:
         elif item_id is not None:
             item = cls.query.get_or_404(item_id)
             if not item.__fs_can_access__():
-                abort(403)
+                return Response("Access forbidden", 403)
         elif request.method == "GET":
             # no item id get a list of items
             if user:
@@ -689,7 +689,7 @@ class FlaskSerializeMixin:
             if not item:
                 if request.method == "POST":
                     return cls.fs_request_create_form().fs_as_json
-                abort(405)
+                return Response("METHOD forbidden", 405)
 
             # get a single item
             if request.method == "GET":
@@ -705,7 +705,7 @@ class FlaskSerializeMixin:
                             properties=item.__fs_return_properties(),
                         )
                     )
-                abort(403)
+                return Response("UPDATE forbidden", 403)
 
             elif request.method == "DELETE":
                 # delete a single item
@@ -715,7 +715,7 @@ class FlaskSerializeMixin:
                     cls.db.session.delete(item)
                     cls.db.session.commit()
                     return jsonify(dict(item=item.fs_as_dict, message="Deleted"))
-                abort(403)
+                return Response("DELETE forbidden", 403)
 
         except Exception as e:
             return str(e), cls.__fs_http_error_code
