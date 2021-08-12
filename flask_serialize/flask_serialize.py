@@ -697,14 +697,15 @@ class FlaskSerializeMixin:
 
             elif request.method == "POST" or request.method == "PUT":
                 # update single item
-                item.fs_request_update_form()
-                return jsonify(
-                    dict(
-                        message="Updated",
-                        item=item.__fs_as_exclude_json_dict(),
-                        properties=item.__fs_return_properties(),
+                if item.fs_request_update_form():
+                    return jsonify(
+                        dict(
+                            message="Updated",
+                            item=item.__fs_as_exclude_json_dict(),
+                            properties=item.__fs_return_properties(),
+                        )
                     )
-                )
+                abort(403)
 
             elif request.method == "DELETE":
                 # delete a single item

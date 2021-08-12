@@ -152,7 +152,25 @@ def route_setting_update(item_id):
         item.fs_request_update_json()
     except Exception as e:
         print(e)
-        return Response("Error updating item: " + str(e), 500)
+        return Response("PUT Error updating item: " + str(e), 500)
+    return "Updated"
+
+
+@app.route("/setting_update_post/<int:item_id>", methods=["PUT", "POST"])
+def route_setting_update_post(item_id):
+    """
+    update from a json object
+
+    :param item_id: item to update
+    :return:
+    """
+    item = Setting.query.get_or_404(item_id)
+    try:
+        if not item.fs_request_update_form():
+            return Response('update not allowed', 403)
+    except Exception as e:
+        print(e)
+        return Response("POST Error updating item: " + str(e), 500)
     return "Updated"
 
 
@@ -419,6 +437,8 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
 
     # checks if Flask-Serialize can access
     def __fs_can_update__(self):
+        if self.value == '9999':
+            return False
         if not self.__fs_can_access__():
             raise Exception("Update not allowed.  Magic value!")
         return True

@@ -270,11 +270,25 @@ def test__fs_can_access___update(client):
     # try to update
     rv = client.put("/setting_update/{}".format(excluded_id), json=dict(active=False))
     assert rv.status_code != 200
-    assert b"Error updating item: Update not allowed.  Magic value!" == rv.data
+    assert b"PUT Error updating item: Update not allowed.  Magic value!" == rv.data
+
     result_list = Setting.fs_query_by_access(setting_type="test")
     assert len(result_list) == 2
     result_list = Setting.fs_query_by_access(user="Andrew", setting_type="test")
     assert len(result_list) == 1  # no robert
+
+
+def test__can_update_returns_false(client):
+    # test return False
+    excluded_key = random_string()
+    value = "9999"
+    rv = client.post(
+        "/setting_add", data=dict(setting_type="test", key=excluded_key, value=value)
+    )
+    assert rv.status_code == 302
+    item = Setting.query.filter_by(key=excluded_key).first()
+    rv = client.post(f"/setting_update_post/{item.id}", data=dict(active=False))
+    assert 403 == rv.status_code
 
 
 def test__fs_can_delete__(client):
