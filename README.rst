@@ -16,7 +16,7 @@ Installation
 Simple and quick to get going in two steps.
 -------------------------------------------------
 
-.1. Import and add the FlaskSerializeMixin mixin to a model:
+*One* Import and add the FlaskSerializeMixin mixin to a model:
     
 .. code:: python
 
@@ -30,7 +30,7 @@ Simple and quick to get going in two steps.
         id = db.Column(db.Integer, primary_key=True)
         # other fields ...
 
-.2. Configure the route with the do all mixin method:
+*Two* Configure the route with the do all mixin method:
 
 .. code:: python
 
@@ -39,16 +39,13 @@ Simple and quick to get going in two steps.
     def items(item_id=None):
         return Item.fs_get_delete_put_post(item_id)
 
-.3. Done!  Returns JSON as a single item or a list with only a single route.
+*Three* Done!  Returns JSON as a single item or a list with only a single route.
 
 Flask-serialize is intended for joining a Flask SQLAlchemy Python backend with
 a JavaScript Web client.  It allows read JSON serialization
 from the db and easy to use write back of models using PUT and POST.
 
 4 times faster than marshmallow for simple dict serialization.
-
-It is not suitable for two way serialization.  Use
-`marshmallow` or similar for more complicated systems.
 
 Example
 =======
@@ -985,7 +982,7 @@ Release Notes
 -------------
 
 * 2.0.1 - Try to get properties and methods to use more appropriate names.
-* 1.5.2 - Test with flask 2.0.  Add  __fs_after_commit__ method to allow post create/update actions.  Improve documentation.
+* 1.5.2 - Test with flask 2.0.  Add __fs_after_commit__ method to allow post create/update actions.  Improve documentation.
 * 1.5.1 - Fix TypeError: unsupported operand type(s) for +=: 'ImmutableColumnCollection' and 'list' with newer versions of SQLAlchemy
 * 1.5.0 - Return item from POST/PUT updates. Allow __fs_create_fields__ and __fs_update_fields__ to be specified using the column fields.  None values serialize as null/None.  Restore previous __fs_update_properties__ behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
 * 1.4.2 - by default return all props with __fs_update_properties__
