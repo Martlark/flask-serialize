@@ -77,18 +77,19 @@ Model setup
         __fs_create_fields__ = __fs_update_fields__ = ['setting_type', 'value', 'key', 'active']
 
         # checks if Flask-Serialize can delete
-        def ____fs_can_delete__(__self):
+        def __fs_can_delete__(self):
             if self.value == '1234':
                 raise Exception('Deletion not allowed.  Magic value!')
             return True
     
         # checks if Flask-Serialize can create/update
-        def __ __fs_verify__(__self, create=False):
+        def __fs_verify__(self, create=False):
             if len(self.key or '') < 1:
                 raise Exception('Missing key')
     
             if len(self.setting_type or '') < 1:
                 raise Exception('Missing setting type')
+            return True
     
         def __repr__(self):
             return '<Setting %r %r %r>' % (self.id, self.setting_type, self.value)
