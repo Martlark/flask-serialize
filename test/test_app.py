@@ -817,4 +817,7 @@ def test_user(client):
 def test_readme_list():
     import restructuredtext_lint
     errors = restructuredtext_lint.lint_file('../README.rst')
-    assert len(errors) == 0, errors
+    if len(errors):
+        for e in errors:
+            print('\nRST LINT FAILURE', e.message)
+    assert len(errors) == 0
