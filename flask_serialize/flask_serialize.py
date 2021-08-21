@@ -143,7 +143,7 @@ class FlaskSerializeMixin:
         if not item or not item.__fs_can_access__():
             return jsonify({})
         return item.fs_as_json
-
+    
     @classmethod
     def fs_json_list(cls, query_result, prop_filters=None):
         """
@@ -155,21 +155,14 @@ class FlaskSerializeMixin:
         :param prop_filters: dictionary of filter elements to restrict results
         :return: flask response with json list of results
         """
-        # ascending
         items = [
             item.__fs_as_exclude_json_dict()
             for item in query_result
             if item.__fs_can_access__()
         ]
 
-        if len(items) > 0 and cls.__fs_order_by_field__:
-            items = sorted(items, key=lambda i: i[cls.__fs_order_by_field__])
-
-        # descending
-        if len(items) > 0 and cls.__fs_order_by_field_desc__:
-            items = sorted(
-                items, key=lambda i: i[cls.__fs_order_by_field_desc__], reverse=True
-            )
+        if len(items) <= 0:
+            return jsonify(items)
 
         if prop_filters:
             filtered_result = []
@@ -179,6 +172,16 @@ class FlaskSerializeMixin:
                         filtered_result.append(item)
                         break
             items = filtered_result
+
+        # ascending
+        if cls.__fs_order_by_field__:
+            items = sorted(items, key=lambda i: i[cls.__fs_order_by_field__])
+
+            # descending
+        elif cls.__fs_order_by_field_desc__:
+            items = sorted(
+                items, key=lambda i: i[cls.__fs_order_by_field_desc__], reverse=True
+            )
 
         return jsonify(items)
 

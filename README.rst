@@ -977,6 +977,8 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
  * Regularly called mixin methods now start with `fs_`.
  * Hook methods start with `__fs_` and end with `__`.
  * Control properties start with `__fs_` and end with `__`.
+ * Some hook functions can now return False or True rather than just raise Exceptions
+ * fs_get_delete_put_post now returns a HTTP code that is more accurate of the cause
 
 Release Notes
 -------------
