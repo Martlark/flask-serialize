@@ -812,3 +812,12 @@ def test_user(client):
     rv = client.post(f"/user_add_data/{user_id}", data={"data": test_value})
     assert rv.json["name"] == user_name
     assert test_value in [item.get('value') for item in rv.json["data_items"]]
+
+
+def test_readme_list():
+    import restructuredtext_lint
+    errors = restructuredtext_lint.lint_file('../README.rst')
+    if len(errors):
+        for e in errors:
+            print('\nRST LINT FAILURE', e.message)
+    assert len(errors) == 0
