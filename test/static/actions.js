@@ -86,3 +86,18 @@ $(".random-value").each((index, item) => {
     $(item).val(Math.random().toString(36).substring(2, 7))
 });
 
+$("#get_badmodel").click(data => {
+    $('#message').text('');
+
+    $.ajax(`/badmodel`
+    ).then(result => {
+            $('#badmodel').empty();
+            result.forEach(r => {
+                $('#badmodel').append(`<li>${JSON.stringify(r)}</li>`);
+            })
+        }
+    ).fail((xhr, textStatus, errorThrown) =>
+        $('#message').text(`${xhr.responseText || xhr.message}`)
+    );
+
+});

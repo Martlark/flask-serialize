@@ -15,50 +15,41 @@
 from codecs import open
 from setuptools import setup
 
-VERSION = '1.5.2'
-LONG_DESCRIPTION = open('README.rst', 'r', encoding='utf-8').read()
+VERSION = "2.0.1"
+LONG_DESCRIPTION = open("README.rst", "r", encoding="utf-8").read()
 
 setup(
-    name='flask-serialize',
-
+    name="flask-serialize",
     version=VERSION,
-
-    description='Easy to use JSON serialization and update/create for Flask and SQLAlchemey.',
+    description="Easy to use JSON serialization and update/create for Flask and SQLAlchemy.",
     long_description=LONG_DESCRIPTION,
-    long_description_content_type='text/x-rst',
-
-    url='https://github.com/Martlark/flask-serialize',
-    download_url='https://github.com/Martlark/flask-serialize/archive/{version}.tar.gz'.format(version=VERSION),
-
-    author='Andrew Rowe',
-    author_email='rowe.andrew.d@gmail.com',
-
-    license='Apache Software License',
-
+    long_description_content_type="text/x-rst",
+    url="https://github.com/Martlark/flask-serialize",
+    download_url="https://github.com/Martlark/flask-serialize/archive/{version}.tar.gz".format(
+        version=VERSION
+    ),
+    author="Andrew Rowe",
+    author_email="rowe.andrew.d@gmail.com",
+    license="Apache Software License",
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-
-        'Intended Audience :: Developers',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-        'Framework :: Flask',
-
-        'License :: OSI Approved :: Apache Software License',
-
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-
-        'Operating System :: POSIX',
-        'Operating System :: MacOS',
-        'Operating System :: Unix',
-        'Operating System :: Microsoft :: Windows',
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Framework :: Flask",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Operating System :: POSIX",
+        "Operating System :: MacOS",
+        "Operating System :: Unix",
+        "Operating System :: Microsoft :: Windows",
     ],
-    keywords='flask sqlalchemy serialize serialization serialise',
-
-    packages=['flask_serialize'],
+    keywords="flask sqlalchemy serialize serialization serialise",
+    packages=["flask_serialize"],
     include_package_data=True,
-    install_requires=['Permissive-Dict'],
+    install_requires=["Permissive-Dict"],
 )

@@ -1,7 +1,13 @@
 from datetime import datetime, time
+from typing import Type
 
-from flask import request, jsonify, abort, current_app
+from flask import request, jsonify, abort, current_app, Response
 from permissive_dict import PermissiveDict
+
+
+class FlaskSerializeNoDb(Exception):
+    def __init__(self):
+        super().__init__('FlaskSerializeMixin property "db" is not set')
 
 
 class FlaskSerializeMixin:
@@ -9,46 +15,49 @@ class FlaskSerializeMixin:
     Base mix in class to implement serialization and update methods for use
     with Flask and SQL Alchemy models
     """
+
     # fields that should not be exposed by serialization
-    exclude_serialize_fields = []
-    exclude_json_serialize_fields = []
+    __fs_exclude_serialize_fields__ = []
+    __fs_exclude_json_serialize_fields__ = []
     # list of fields to be used when updating
-    update_fields = []
+    __fs_update_fields__ = []
     # list of fields used when creating
-    create_fields = []
+    __fs_create_fields__ = []
     # order by ascending field
-    order_by_field = None
-    order_by_field_desc = None
+    __fs_order_by_field__ = None
+    __fs_order_by_field_desc__ = None
     # default error code
-    __http_error_code = 400
+    __fs_http_error_code = 400
     # list of fields used to set the update date/time
-    timestamp_fields = ['updated', 'timestamp']
-    # method to be used to timestamp with update_timestamp method
-    timestamp_stamper = datetime.utcnow
+    __fs_timestamp_fields__ = ["updated", "timestamp"]
+    # method to be used to timestamp with____fs_update_timestamp__ method__
+    __fs_timestamp_stamper__ = datetime.utcnow
     # list of property names that are relationships to be included in serialization
-    relationship_fields = []
+    __fs_relationship_fields__ = []
     # add your own converters here
-    column_type_converters = {}
+    __fs_column_type_converters__ = {}
     # add or replace conversion types
-    convert_types = [{'type': bool, 'method': lambda v: 'y' if v else 'n'},
-                     {'type': bytes, 'method': lambda v: v.encode()}]
-    __json_types = [str, dict, list, int, float, bool]
+    __fs_convert_types__ = [
+        {"type": bool, "method": lambda v: "y" if v else "n"},
+        {"type": bytes, "method": lambda v: v.encode()},
+    ]
+    __fs_json_types = [str, dict, list, int, float, bool]
     # default field name when restricting to a particular user
-    fs_user_field = 'user'
+    __fs_user_field__ = "user"
     # properties or fields to return when updating using get or post
-    update_properties = []
+    __fs_update_properties__ = []
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
-    __model_props = {}
+    __fs_model_props = {}
     # previous values of an instance before update attempted
-    previous_field_value = {}
+    __fs_previous_field_value__ = {}
     # current version
-    __version__ = '1.5.2'
+    __fs_version__ = "2.0.1"
 
-    def before_update(self, data_dict):
+    def __fs_before_update__(self, data_dict:dict) -> dict:
         """
-        hook to call before any update_from_dict so that you may alter update values
+        hook to call before any__fs_update_from_dict so that you may alter update values__
         before the item is written in preparation for update to db
 
         :param data_dict: the new data to apply to the item
@@ -56,7 +65,7 @@ class FlaskSerializeMixin:
         """
         return data_dict
 
-    def fs_after_commit(self, create=False):
+    def __fs_after_commit__(self, create:bool=False):
         """
         hook to call after any put/post commit so that you may do something
         self will be the new / updated committed item
@@ -64,56 +73,55 @@ class FlaskSerializeMixin:
         :param create: True when item was just created.
         """
 
-    def to_date_short(self, d):
+    def __fs_to_date_short__(self, d:datetime)->str:
         """
         convert the given date field to a short date / time without fractional seconds
 
         :param d: {datetime.datetime} the value to convert
         :return: {String} the short date
         """
-        return str(d).split('.')[0]
+        return str(d).split(".")[0]
 
     @classmethod
-    def query_by_access(cls, user=None, **kwargs):
+    def fs_query_by_access(cls, user=None, **kwargs)->list:
         """
         filter a query result to that optionally owned by the given user and
-        can_access()
+        __fs_can_access__()
 
-        :param query: SQLAlchemy query
-        :param user: the user to use as a filter, default relationship name is user (fs_user_field)
+        :param user: the user to use as a filter, default relationship name is user (__fs_user_field__)
         :return: a list of query results
         """
 
         if user:
-            kwargs[cls.fs_user_field] = user
+            kwargs[cls.__fs_user_field__] = user
 
         query = cls.query.filter_by(**kwargs)
-        items = [item for item in query if item.can_access()]
+        items = [item for item in query if item.__fs_can_access__()]
 
         return items
 
     @classmethod
-    def get_by_user_or_404(cls, item_id, user=None):
+    def fs_get_by_user_or_404(cls, item_id, user=None):
         """
         return the object with the given primary key id that is optionally owned by the given user and
-        can_access()
+        __fs_can_access__()
 
         :param item_id: object primary key, id
-        :param user: the user to use as a filter, default relationship name is user (fs_user_field)
+        :param user: the user to use as a filter, default relationship name is user (__fs_user_field__)
         :return: the object
         :throws: 404 exception if not found
         """
 
-        kwargs = {'id': item_id}
+        kwargs = {"id": item_id}
         if user:
-            kwargs[cls.fs_user_field] = user
+            kwargs[cls.__fs_user_field__] = user
         item = cls.query.filter_by(**kwargs).first_or_404()
-        if not item.can_access():
+        if not item.__fs_can_access__():
             abort(404)
         return item
 
     @classmethod
-    def json_filter_by(cls, **kwargs):
+    def fs_json_filter_by(cls, **kwargs):
         """
         return a list in json format using the filter_by arguments
 
@@ -121,10 +129,10 @@ class FlaskSerializeMixin:
         :return: flask response with json list of results
         """
         results = cls.query.filter_by(**kwargs)
-        return cls.json_list(results)
+        return cls.fs_json_list(results)
 
     @classmethod
-    def json_get(cls, item_id):
+    def fs_json_get(cls, item_id):
         """
         return an item in json format using the item_id as a primary key
 
@@ -132,30 +140,29 @@ class FlaskSerializeMixin:
         :return: flask response with json item, or {} if not found or no access
         """
         item = cls.query.get(item_id)
-        if not item or not item.can_access():
+        if not item or not item.__fs_can_access__():
             return jsonify({})
-        return item.as_json
-
+        return item.fs_as_json
+    
     @classmethod
-    def json_list(cls, query_result, prop_filters=None):
+    def fs_json_list(cls, query_result, prop_filters=None):
         """
         Return a list in json format from the query_result.
-        When order_by_field is defined sort by that field in ascending order.
-        Only returns those that can_access()
+        When __fs_order_by_field__ is defined sort by that field in ascending order.
+        Only returns those that __fs_can_access__()
 
         :param query_result: sql alchemy query result
         :param prop_filters: dictionary of filter elements to restrict results
         :return: flask response with json list of results
         """
-        # ascending
-        items = [item.__as_exclude_json_dict() for item in query_result if item.can_access()]
+        items = [
+            item.__fs_as_exclude_json_dict()
+            for item in query_result
+            if item.__fs_can_access__()
+        ]
 
-        if len(items) > 0 and cls.order_by_field:
-            items = sorted(items, key=lambda i: i[cls.order_by_field])
-
-        # descending
-        if len(items) > 0 and cls.order_by_field_desc:
-            items = sorted(items, key=lambda i: i[cls.order_by_field_desc], reverse=True)
+        if len(items) <= 0:
+            return jsonify(items)
 
         if prop_filters:
             filtered_result = []
@@ -166,49 +173,72 @@ class FlaskSerializeMixin:
                         break
             items = filtered_result
 
+        # ascending
+        if cls.__fs_order_by_field__:
+            items = sorted(items, key=lambda i: i[cls.__fs_order_by_field__])
+
+            # descending
+        elif cls.__fs_order_by_field_desc__:
+            items = sorted(
+                items, key=lambda i: i[cls.__fs_order_by_field_desc__], reverse=True
+            )
+
         return jsonify(items)
 
     @classmethod
-    def dict_list(cls, query_result):
+    def fs_dict_list(cls, query_result):
         """
         return a list of dictionary objects from the sql query result
-        without exclude_serialize_fields fields
-        for only those than can_access()
+        without __fs_exclude_serialize_fields__ fields
+        for only those than __fs_can_access__()
 
         :param query_result: sql alchemy query result
         :return: list of dict objects
         """
-        return [item.__as_exclude_json_dict() for item in query_result if item.can_access()]
+        return [
+            item.__fs_as_exclude_json_dict()
+            for item in query_result
+            if item.__fs_can_access__()
+        ]
 
     @property
-    def as_json(self):
+    def fs_as_json(self):
         """
         the sql object as a json response without the excluded fields
 
         :return: flask response json object
         """
-        return jsonify(self.__as_exclude_json_dict())
+        return jsonify(self.__fs_as_exclude_json_dict())
 
-    def fs_private_field(self, field_name):
+    def __fs_private_field__(self, field_name):
+        """
+        return true if field_name should be private
+
+        :param field_name: name to check
+        :return:
+        """
         return False
 
-    def __as_exclude_json_dict(self):
+    def __fs_as_exclude_json_dict(self):
         """
         private: get a dict that is used to serialize to web clients
-        without fields in exclude_json_serialize_fields and exclude_serialize_fields
+        without fields in __fs_exclude_json_serialize_fields__ and __fs_exclude_serialize_fields__
         excludes any private_field
 
         :return: dictionary
         """
-        return {k: v for k, v in self.as_dict.items() if
-                k not in self.exclude_json_serialize_fields}
+        return {
+            k: v
+            for k, v in self.fs_as_dict.items()
+            if k not in self.__fs_exclude_json_serialize_fields__
+        }
 
-    def property_converter(self, value):
+    def __fs_property_converter__(self, value):
         """
         convert to a json compatible format.
 
         * complex - just uses str conversion
-        * datetime - short format as per to_date_short
+        * datetime - short format as per  __fs_to_date_short__
         * set - becomes a list
         * anything else not supported by json becomes a str
 
@@ -220,17 +250,17 @@ class FlaskSerializeMixin:
         if value is None:
             return None
         if isinstance(value, datetime):
-            return self.to_date_short(value)
+            return self.__fs_to_date_short__(value)
         if isinstance(value, set):
             return list(value)
         if isinstance(value, FlaskSerializeMixin):
-            return value.as_dict
-        if type(value) not in self.__json_types:
+            return value.fs_as_dict
+        if type(value) not in self.__fs_json_types:
             return str(value)
         return value
 
     @staticmethod
-    def __relationship_converter(relationships):
+    def __fs_relationship_converter(relationships):
         """
         convert a child SQLAlchemy result set into a python
         dictionary list.
@@ -239,11 +269,11 @@ class FlaskSerializeMixin:
         :return: list of dict objects
         """
         if isinstance(relationships, FlaskSerializeMixin):
-            return relationships.as_dict
-        return [item.as_dict for item in relationships]
+            return relationships.fs_as_dict
+        return [item.fs_as_dict for item in relationships]
 
     @staticmethod
-    def __lob_converter(value):
+    def __fs_lob_converter(value):
         """
         convert a LOB into a decoded string
 
@@ -251,12 +281,12 @@ class FlaskSerializeMixin:
         :return: decoded string
         """
         if not value:
-            return ''
+            return ""
         value = value.decode()
         return value
 
     @staticmethod
-    def __sqlite_date_converter(value):
+    def __fs_sqlite_date_converter(value):
         """
         convert an ISO-9 date or datetime from a form etc into a datetime as sqlite does
         not handle date conversions nicely
@@ -268,284 +298,288 @@ class FlaskSerializeMixin:
             return value
         # assumes ISO 8601 as per javascript standard for dates
         try:
-            return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+            return datetime.strptime(value, "%Y-%m-%dT%H:%M")
         except:
-            return datetime.strptime(value, '%Y-%m-%d')
+            return datetime.strptime(value, "%Y-%m-%d")
 
-    def __get_props(self):
+    def __fs_get_props(self):
         """
         get the properties for this table to be used for introspection
 
-        :return: properties EasyDict
+        :return: properties PermissiveDict
         """
-        props = self.__model_props.get(self.__table__)
+        props = self.__fs_model_props.get(self.__table__)
         if not props:
-            props = PermissiveDict(name=self.__table__.name, id=0, primary_key_field='id')
-            props.converters = {'DATETIME': self.to_date_short,
-                                'PROPERTY': self.property_converter,
-                                'RELATIONSHIP': self.__relationship_converter,
-                                'NUMERIC': float,
-                                'DECIMAL': float,
-                                'LOB': self.__lob_converter,
-                                'BLOB': self.__lob_converter,
-                                'CLOB': self.__lob_converter,
-                                }
+            props = PermissiveDict(
+                name=self.__table__.name, id=0, primary_key_field="id"
+            )
+            props.converters = {
+                "DATETIME": self.__fs_to_date_short__,
+                "PROPERTY": self.__fs_property_converter__,
+                "RELATIONSHIP": self.__fs_relationship_converter,
+                "NUMERIC": float,
+                "DECIMAL": float,
+                "LOB": self.__fs_lob_converter,
+                "BLOB": self.__fs_lob_converter,
+                "CLOB": self.__fs_lob_converter,
+            }
 
             # SQL columns
-            props.__exclude_fields = ['as_dict', 'as_json'] + self.exclude_serialize_fields
+            props.__exclude_fields = [
+                                         "fs_as_dict",
+                                         "fs_as_json",
+                                     ] + self.__fs_exclude_serialize_fields__
             field_list = list(self.__table__.columns)
-            if 'sqlite' in self.__table__.dialect_options:
-                props.DIALECT = 'sqlite'
-                self.convert_types.append(
-                    {'type': datetime, 'method': self.__sqlite_date_converter}),
+            if "sqlite" in self.__table__.dialect_options:
+                props.DIALECT = "sqlite"
+                self.__fs_convert_types__.append(
+                    {"type": datetime, "method": self.__fs_sqlite_date_converter}
+                ),
             # detect primary field
             for f in field_list:
                 if f.primary_key:
-                    props.id = str(getattr(self, f.name, ''))
+                    props.id = str(getattr(self, f.name, ""))
                     props.primary_key_field = f.name
                     break
 
             # add class properties
-            field_list += [PermissiveDict(name=p, type='PROPERTY') for p in dir(self.__class__) if
-                           isinstance(getattr(self.__class__, p), property)]
+            field_list += [
+                PermissiveDict(name=p, type="PROPERTY")
+                for p in dir(self.__class__)
+                if isinstance(getattr(self.__class__, p), property)
+            ]
             # add relationships
-            field_list += [PermissiveDict(name=p, type='RELATIONSHIP') for p in self.relationship_fields]
+            field_list += [
+                PermissiveDict(name=p, type="RELATIONSHIP")
+                for p in self.__fs_relationship_fields__
+            ]
             # add custom converters
-            for converter, method in self.column_type_converters.items():
+            for converter, method in self.__fs_column_type_converters__.items():
                 props.converters[converter] = method
             # exclude fields / props
             props.field_list = []
             for f in field_list:
                 if f.name not in props.__exclude_fields:
-                    f.c_type = str(f.type).split('(')[0]
+                    f.c_type = str(f.type).split("(")[0]
                     f.converter = props.converters.get(f.c_type)
                     if not f.converter:
                         # any non json supported types gets a str
-                        if getattr(f.type, 'python_type', None) not in self.__json_types:
+                        if (
+                                getattr(f.type, "python_type", None)
+                                not in self.__fs_json_types
+                        ):
                             f.converter = str
                     props.field_list.append(f)
 
-            self.__model_props[self.__table__] = props
+            self.__fs_model_props[self.__table__] = props
         return props
 
-    def __get_fields(self):
+    def __fs_get_fields(self):
         """
         return a list of field objects that are valid
-        using fs_private_field
+        using __fs_private_field__
         [{name,c__type,converter},...]
 
         :return:
         """
         fields = []
-        for c in self.__get_props().field_list:
-            if not self.fs_private_field(c.name):
+        for c in self.__fs_get_props().field_list:
+            if not self.__fs_private_field__(c.name):
                 fields.append(c)
         return fields
 
     @property
-    def as_dict(self):
+    def fs_as_dict(self):
         """
         convert a sql alchemy query result item to dict
         override these properties to control the result:
 
-        * relationship_fields - follow relationships listed
-        * exclude_serialize_fields - exclude listed fields from serialization
-        * column_type_converters - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
+        * __fs_relationship_fields__ - follow relationships listed
+        * __fs_exclude_serialize_fields__ - exclude listed fields from serialization
+        * __fs_column_type_converters__ - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
         :return {dictionary} the item as a dict
         """
 
         # built in converters
-        # can be replaced using column_type_converters
+        # can be replaced using __fs_column_type_converters__
         d = {}
 
-        for c in self.__get_fields():
+        for c in self.__fs_get_fields():
             try:
-                d[c.name] = v = getattr(self, c.name, '')
+                d[c.name] = v = getattr(self, c.name, "")
             except Exception as e:
                 v = str(e)
 
             if v is None:
-                d[c.name] = ''
+                d[c.name] = ""
             elif c.converter:
                 try:
                     d[c.name] = c.converter(v)
                 except Exception as e:
-                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(e, c.name, c.c_type)
+                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(
+                        e, c.name, c.c_type
+                    )
+                    current_app.logger.warning(d[c.name])
         return d
 
-    def __json_api_dict(self):
-        """
-        start of returning as JSON_API.  Unused
-
-        :return: {id, name, attributes(dict)}
-        """
-        props = self.__get_props()
-        d = dict(id=props.id, type=props.name, attributes=self.as_dict)
-        return jsonify(d)
-
-    def __json_api_list(self, query_result):
-        """
-        start of returning as JSON_API.  Unused
-        returns a list of items where can_access() from query_result
-
-        :param query_result:
-        :return: list of {id, name, attributes(dict)}
-        """
-        dict_list = self.dict_list(query_result=query_result)
-        d = dict(data=[item.__json_api_dict() for item in dict_list])
-        return jsonify(d)
-
-    def __get_update_field_type(self, field, value):
+    def __fs_get_update_field_type(self, field, value):
         """
         get the type of the update to db field from cached table properties
 
         :param field:
         :return: class of the type
         """
-        props = self.__get_props()
+        props = self.__fs_get_props()
         if props:
             for f in props.field_list:
                 if f.name == field:
-                    if f.c_type.startswith("VARCHAR") or f.c_type.startswith("CHAR") or f.c_type.startswith("TEXT"):
+                    if (
+                            f.c_type.startswith("VARCHAR")
+                            or f.c_type.startswith("CHAR")
+                            or f.c_type.startswith("TEXT")
+                    ):
                         return str
                     if f.c_type.startswith("INTEGER"):
                         return int
-                    if f.c_type.startswith("FLOAT") or f.c_type.startswith("REAL") or f.c_type.startswith("NUMERIC"):
+                    if (
+                            f.c_type.startswith("FLOAT")
+                            or f.c_type.startswith("REAL")
+                            or f.c_type.startswith("NUMERIC")
+                    ):
                         return float
                     if f.c_type.startswith("DATE") or f.c_type.startswith("TIME"):
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
                         return bool
-                    if 'LOB' in f.c_type:
+                    if "LOB" in f.c_type:
                         return bytes
 
         return None
 
-    def __convert_value(self, name, value):
+    def __fs_convert_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
-        override built in conversions by setting the value of convert_types.
+        override built in conversions by setting the value of __fs_convert_types__.
         First uses bare value to determine type and then uses db derived values
         ie:
-        convert_types = [{'type':bool, 'method': lambda x: not x}]
+        __fs_convert_types__ = [{'type':bool, 'method': lambda x: not x}]
 
         :param name: name of the field to update
         :param value: value to update with
         :return: the converted value
         """
-        for t in self.convert_types:
-            if isinstance(value, t['type']):
-                value = t['method'](value)
+        for t in self.__fs_convert_types__:
+            if isinstance(value, t["type"]):
+                value = t["method"](value)
                 return value
 
-        instance_type = self.__get_update_field_type(name, value)
+        instance_type = self.__fs_get_update_field_type(name, value)
         if instance_type:
-            for t in self.convert_types:
-                if instance_type == t['type']:
-                    value = t['method'](value)
+            for t in self.__fs_convert_types__:
+                if instance_type == t["type"]:
+                    value = t["method"](value)
                     return value
         return value
 
     @classmethod
-    def request_create_form(cls, **kwargs):
+    def fs_request_create_form(cls, **kwargs):
         """
         create a new item from a form in the current request object
         throws error if something wrong. Use **kwargs to set the object properties of the newly created item.
 
         :return: the new created item
         """
+        if not cls.db:
+            raise FlaskSerializeNoDb()
+
         new_item = cls(**kwargs)
 
-        create_fields = list(new_item.create_fields)
-        if len(create_fields or '') == 0:
-            create_fields = [c.name for c in new_item.__get_fields() if
-                             isinstance(c, cls.db.Column) and c.name != new_item.__get_props().primary_key_field]
+        __fs_create_fields__ = list(new_item.__fs_create_fields__)
+        if len(__fs_create_fields__ or "") == 0:
+            __fs_create_fields__ = [
+                c.name
+                for c in new_item.__fs_get_fields()
+                if isinstance(c, cls.db.Column) and c.name != new_item.__fs_get_props().primary_key_field
+            ]
 
         try:
             json_data = request.get_json(force=True)
-            if len(json_data) > 0:
-                for field in create_fields:
-                    if cls.db and isinstance(field, cls.db.Column):
-                        field = field.name
-                    if field in json_data:
-                        value = json_data.get(field)
-                        setattr(new_item, field, new_item.__convert_value(field, value))
         except:
-            for field in create_fields:
+            json_data = request.form
+
+        if len(json_data) > 0:
+            for field in __fs_create_fields__:
                 if cls.db and isinstance(field, cls.db.Column):
                     field = field.name
-                if field in request.form:
-                    value = request.form.get(field)
-                    setattr(new_item, field, new_item.__convert_value(field, value))
+                if field in json_data:
+                    value = json_data.get(field)
+                    setattr(new_item, field, new_item.__fs_convert_value(field, value))
 
-        new_item.verify(create=True)
-        new_item.update_timestamp()
+        new_item.__fs_verify__(create=True)
+        new_item.__fs_update_timestamp__()
         cls.db.session.add(new_item)
         cls.db.session.commit()
-        new_item.fs_after_commit(create=True)
+        new_item.__fs_after_commit__(create=True)
         return new_item
 
-    def request_update_form(self):
+    def __fs_request_update(self, json_data):
+        """
+        update the current db object
+
+        :return:
+        """
+        if not self.__fs_can_update__():
+            return False
+        self.fs_update_from_dict(json_data)
+        self.__fs_verify__()
+        self.__fs_update_timestamp__()
+        if not self.db:
+            raise FlaskSerializeNoDb()
+        self.db.session.add(self)
+        self.db.session.commit()
+        self.__fs_after_commit__()
+        return True
+
+    def fs_request_update_form(self):
         """
         update/create the item using form data from the request object
         only present fields are updated
-        throws error if validation or can_update() fails
+        throws error if validation or __fs_can_update__() fails
 
         :return: True when complete
         """
-        if request.content_type == 'application/json' or request.method == 'PUT':
-            return self.request_update_json()
-        else:
-            self.update_from_dict(request.form)
-        if not self.can_update():
-            return False
-        self.verify()
-        self.update_timestamp()
-        if not self.db:
-            raise Exception('FlaskSerializeMixin property "db" is not set')
-        self.db.session.add(self)
-        self.db.session.commit()
-        self.fs_after_commit(self)
-        return True
+        if request.content_type == "application/json" or request.method == "PUT":
+            return self.fs_request_update_json()
+        return self.__fs_request_update(request.form)
 
-    def request_update_json(self):
+    def fs_request_update_json(self):
         """
         Update an item from request json data or PUT params, probably from a PUT or PATCH.
-        Throws exception if not valid or can_update() fails
+        Throws exception if not valid or __fs_can_update__() fails
 
         :return: True if item updated
         """
 
-        if not self.can_update():
-            return False
         try:
             json_data = request.get_json(force=True)
         except Exception as e:
             json_data = request.values
             if len(json_data) == 0:
                 current_app.logger.exception(e)
+                return False
 
-        self.update_from_dict(json_data)
+        return self.__fs_request_update(json_data)
 
-        self.verify()
-        self.update_timestamp()
-        if not self.db:
-            raise Exception('FlaskSerializeMixin property "db" is not set')
-        self.db.session.add(self)
-        self.db.session.commit()
-        self.fs_after_commit()
-        return True
-
-    def update_timestamp(self):
+    def __fs_update_timestamp__(self):
         """
         update any timestamp fields using the Class timestamp method if those fields exist
 
         """
-        for field in self.timestamp_fields:
+        for field in self.__fs_timestamp_fields__:
             if hasattr(self, field):
-                setattr(self, field, self.timestamp_stamper())
+                setattr(self, field, self.__fs_timestamp_stamper__())
 
-    def update_from_dict(self, data_dict):
+    def fs_update_from_dict(self, data_dict):
         """
         uses a dict to update fields of the model instance.  sets previous values to
         self.previous_values[field_name] before the update
@@ -553,58 +587,66 @@ class FlaskSerializeMixin:
         :param data_dict: the data to update
         :return:
         """
-        data_dict = self.before_update(data_dict)
-        update_fields = list(self.update_fields)
-        if len(self.update_fields or '') == 0:
-            update_fields = [c.name for c in self.__get_fields() if
-                             isinstance(c, self.db.Column) and c.name != self.__get_props().primary_key_field]
-        for field in update_fields:
+        data_dict = self.__fs_before_update__(data_dict)
+        __fs_update_fields__ = list(self.__fs_update_fields__)
+        if len(self.__fs_update_fields__ or "") == 0:
+            __fs_update_fields__ = [
+                c.name
+                for c in self.__fs_get_fields()
+                if isinstance(c, self.db.Column)
+                   and c.name != self.__fs_get_props().primary_key_field
+            ]
+        for field in __fs_update_fields__:
             if self.db and isinstance(field, self.db.Column):
                 field = field.name
-            self.previous_field_value[field] = getattr(self, field)
+            self.__fs_previous_field_value__[field] = getattr(self, field)
             if field in data_dict:
-                setattr(self, field, self.__convert_value(field, data_dict[field]))
+                setattr(self, field, self.__fs_convert_value(field, data_dict[field]))
 
-    def can_access(self):
+    def __fs_can_access__(self):
         """
+        hook to see if can access
         return True if allowed to access, return false if not
 
         :return: True/False
         """
         return True
 
-    def can_update(self):
+    def __fs_can_update__(self):
         """
+        hook to see if can update
         return True if allowed to update, raise an error if not allowed
 
         :return: True if can update
         """
-        return self.can_access()
+        return self.__fs_can_access__()
 
-    def can_delete(self):
+    def __fs_can_delete__(self):
         """
+        hook to see if can delete
         raise an exception if deletion is not allowed or True
-        if deletion is allowed.  Default is can_update() returns false
+        if deletion is allowed.  Default is __fs_can_update__() returns false
         aborts with 403
 
         :return: True if can delete
         """
-        if not self.can_update():
+        if not self.__fs_can_update__():
             abort(403)
         return True
 
-    def verify(self, create=False):
+    def __fs_verify__(self, create=False):
         """
+        hook to verify item
         raise exception if item is not valid for put/patch/post
 
         :param: create - True if verification is for a new item
         """
-        pass
+        return True
 
-    def __return_properties(self):
+    def __fs_return_properties(self):
         """
         when returning success codes from a put/post update return a dict
-        composed of the property values from the update_properties list.
+        composed of the property values from the __fs_update_properties__ list.
         ie:
         return jsonify({'message': 'Updated', 'properties': item.__return_properties()})
         this can be used to communicate from the model on the server to the JavaScript code
@@ -612,15 +654,18 @@ class FlaskSerializeMixin:
 
         :return: dictionary of properties
         """
-        return {prop: self.property_converter(getattr(self, prop)) for prop in self.update_properties}
+        return {
+            prop: self.__fs_property_converter__(getattr(self, prop))
+            for prop in self.__fs_update_properties__
+        }
 
     @classmethod
-    def get_delete_put_post(cls, item_id=None, user=None, prop_filters=None):
+    def fs_get_delete_put_post(cls, item_id=None, user=None, prop_filters=None):
         """
         get, delete, post, put with JSON/FORM a single model item
 
-        * any access uses can_access() to check for accessibility
-        * any update uses can_update() to check for update permission
+        * any access uses __fs_can_access__() to check for accessibility
+        * any update uses __fs_can_update__() to check for update permission
 
         :param item_id: the primary key of the item - if none and method is 'GET' returns all items
         :param user: user to use as query filter.
@@ -629,64 +674,74 @@ class FlaskSerializeMixin:
         """
         item = None
         if user is not None and item_id is not None:
-            item = cls.get_by_user_or_404(item_id, user=user)
+            item = cls.fs_get_by_user_or_404(item_id, user=user)
         elif item_id is not None:
             item = cls.query.get_or_404(item_id)
-            if not item.can_access():
-                abort(404)
-        elif request.method == 'GET':
+            if not item.__fs_can_access__():
+                return Response("Access forbidden", 403)
+        elif request.method == "GET":
             # no item id get a list of items
             if user:
-                kwargs = {cls.fs_user_field: user}
+                kwargs = {cls.__fs_user_field__: user}
                 result = cls.query.filter_by(**kwargs)
             else:
                 result = cls.query.all()
-            return cls.json_list(result, prop_filters=prop_filters)
+            return cls.fs_json_list(result, prop_filters=prop_filters)
 
         try:
             if not item:
-                if request.method == 'POST':
-                    return cls.request_create_form().as_json
-                abort(405)
+                if request.method == "POST":
+                    return cls.fs_request_create_form().fs_as_json
+                return Response("METHOD forbidden", 405)
 
             # get a single item
-            if request.method == 'GET':
-                return item.as_json
+            if request.method == "GET":
+                return item.fs_as_json
 
-            elif request.method == 'POST' or request.method == 'PUT':
+            elif request.method == "POST" or request.method == "PUT":
                 # update single item
-                item.request_update_form()
-                return jsonify(
-                    dict(message='Updated', item=item.__as_exclude_json_dict(), properties=item.__return_properties()))
+                if item.fs_request_update_form():
+                    return jsonify(
+                        dict(
+                            message="Updated",
+                            item=item.__fs_as_exclude_json_dict(),
+                            properties=item.__fs_return_properties(),
+                        )
+                    )
+                return Response("UPDATE forbidden", 403)
 
-            elif request.method == 'DELETE':
+            elif request.method == "DELETE":
                 # delete a single item
-                item.can_delete()
-                cls.db.session.delete(item)
-                cls.db.session.commit()
-                return jsonify(dict(item=item.as_dict, message='Deleted'))
+                if not cls.db:
+                    raise FlaskSerializeNoDb()
+                if item.__fs_can_delete__():
+                    cls.db.session.delete(item)
+                    cls.db.session.commit()
+                    return jsonify(dict(item=item.fs_as_dict, message="Deleted"))
+                return Response("DELETE forbidden", 403)
 
         except Exception as e:
-            return str(e), cls.__http_error_code
+            return str(e), cls.__fs_http_error_code
 
     @classmethod
-    def json_first(cls, **kwargs):
+    def fs_json_first(cls, **kwargs):
         """
         return the first result in json response format using the filter_by arguments, or {} if no result
-        or not can_access()
+        or not __fs_can_access__()
 
         :param kwargs: SQLAlchemy query.filter_by arguments
         :return: flask response json item or {} if no result
         """
         item = cls.query.filter_by(**kwargs).first()
-        if not item or not item.can_access():
+        if not item or not item.__fs_can_access__():
             return jsonify({})
 
-        return item.as_json
+        return item.fs_as_json
 
 
-def FlaskSerialize(db=None):
+def FlaskSerialize(db=None) -> Type[FlaskSerializeMixin]:
     """
+    Factory to
     return the FlaskSerializeMixin mixin class, optionally initialize the db values
 
     :param db: (optional) SQLAlchemy db instance

@@ -13,10 +13,7 @@
 # limitations under the License.
 
 
-from .flask_serialize import (
-    FlaskSerializeMixin)
+from .flask_serialize import FlaskSerializeMixin
 
-__all__ = (
-    'FlaskSerializeMixin',
-)
-__package__ = 'flask_serialize'
+__all__ = ("FlaskSerializeMixin",)
+__package__ = "flask_serialize"
