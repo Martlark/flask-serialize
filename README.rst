@@ -680,7 +680,7 @@ Put, get, delete, post and get-all magic method handler.
 ====== ================================================================================================== ============================
 Method Operation                                                                                          Response
 ====== ================================================================================================== ============================
-GET  ggg  returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
+GET    returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
 GET    returns all items when `item_id` is None.                                                          [{item1},{item2},...]
 PUT    updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    {message:message,item:{model_fields,...},properties:{__fs_update_properties__}}
        before updating.  Returns new item as {item}
