@@ -366,7 +366,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "key",
         "active",
         "number",
-        "floaty",
+        floaty,
         "scheduled",
         "deci",
         "lob",
@@ -382,9 +382,9 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "deci",
         "lob",
     ]
-    __fs_exclude_serialize_fields__ = ["created"]
+    __fs_exclude_serialize_fields__ = [created]
     __fs_exclude_json_serialize_fields__ = ["updated"]
-    __fs_relationship_fields__ = ["sub_settings", "single"]
+    __fs_relationship_fields__ = [sub_settings, "single"]
     __fs_update_properties__ = ["prop_test"]
     __fs_order_by_field__ = "value"
     # lob
