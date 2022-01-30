@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from typing import Type
+from typing import Type, List
 
 from flask import request, jsonify, abort, current_app, Response
 from permissive_dict import PermissiveDict
@@ -53,9 +53,9 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __fs_version__ = "2.0.2"
+    __fs_version__ = "2.0.3"
 
-    def __fs_before_update__(self, data_dict:dict) -> dict:
+    def __fs_before_update__(self, data_dict: dict) -> dict:
         """
         hook to call before any__fs_update_from_dict so that you may alter update values__
         before the item is written in preparation for update to db
@@ -65,7 +65,7 @@ class FlaskSerializeMixin:
         """
         return data_dict
 
-    def __fs_after_commit__(self, create:bool=False):
+    def __fs_after_commit__(self, create: bool = False):
         """
         hook to call after any put/post commit so that you may do something
         self will be the new / updated committed item
@@ -73,7 +73,7 @@ class FlaskSerializeMixin:
         :param create: True when item was just created.
         """
 
-    def __fs_to_date_short__(self, d:datetime)->str:
+    def __fs_to_date_short__(self, d: datetime) -> str:
         """
         convert the given date field to a short date / time without fractional seconds
 
@@ -83,7 +83,7 @@ class FlaskSerializeMixin:
         return str(d).split(".")[0]
 
     @classmethod
-    def fs_query_by_access(cls, user=None, **kwargs)->list:
+    def fs_query_by_access(cls, user=None, **kwargs) -> list:
         """
         filter a query result to that optionally owned by the given user and
         __fs_can_access__()
@@ -143,7 +143,7 @@ class FlaskSerializeMixin:
         if not item or not item.__fs_can_access__():
             return jsonify({})
         return item.fs_as_json
-    
+
     @classmethod
     def fs_json_list(cls, query_result, prop_filters=None):
         """
@@ -175,12 +175,17 @@ class FlaskSerializeMixin:
 
         # ascending
         if cls.__fs_order_by_field__:
-            items = sorted(items, key=lambda i: i[cls.__fs_order_by_field__])
+            items = sorted(
+                items,
+                key=lambda i: i[cls._fs_get_field_name(cls.__fs_order_by_field__)],
+            )
 
             # descending
         elif cls.__fs_order_by_field_desc__:
             items = sorted(
-                items, key=lambda i: i[cls.__fs_order_by_field_desc__], reverse=True
+                items,
+                key=lambda i: i[cls._fs_get_field_name(cls.__fs_order_by_field_desc__)],
+                reverse=True,
             )
 
         return jsonify(items)
@@ -302,7 +307,7 @@ class FlaskSerializeMixin:
         except:
             return datetime.strptime(value, "%Y-%m-%d")
 
-    def __fs_get_props(self):
+    def _fs_get_props(self):
         """
         get the properties for this table to be used for introspection
 
@@ -325,10 +330,9 @@ class FlaskSerializeMixin:
             }
 
             # SQL columns
-            props.__exclude_fields = [
-                                         "fs_as_dict",
-                                         "fs_as_json",
-                                     ] + self.__fs_exclude_serialize_fields__
+            props.__exclude_fields = ["fs_as_dict", "fs_as_json",] + [
+                self._fs_get_field_name(f) for f in self.__fs_exclude_serialize_fields__
+            ]
             field_list = list(self.__table__.columns)
             if "sqlite" in self.__table__.dialect_options:
                 props.DIALECT = "sqlite"
@@ -350,7 +354,7 @@ class FlaskSerializeMixin:
             ]
             # add relationships
             field_list += [
-                PermissiveDict(name=p, type="RELATIONSHIP")
+                PermissiveDict(name=self._fs_get_field_name(p), type="RELATIONSHIP")
                 for p in self.__fs_relationship_fields__
             ]
             # add custom converters
@@ -365,8 +369,8 @@ class FlaskSerializeMixin:
                     if not f.converter:
                         # any non json supported types gets a str
                         if (
-                                getattr(f.type, "python_type", None)
-                                not in self.__fs_json_types
+                            getattr(f.type, "python_type", None)
+                            not in self.__fs_json_types
                         ):
                             f.converter = str
                     props.field_list.append(f)
@@ -374,16 +378,16 @@ class FlaskSerializeMixin:
             self.__fs_model_props[self.__table__] = props
         return props
 
-    def __fs_get_fields(self):
+    def _fs_get_fields(self) -> List[str]:
         """
         return a list of field objects that are valid
         using __fs_private_field__
         [{name,c__type,converter},...]
 
-        :return:
+        :return: list of strings
         """
         fields = []
-        for c in self.__fs_get_props().field_list:
+        for c in self._fs_get_props().field_list:
             if not self.__fs_private_field__(c.name):
                 fields.append(c)
         return fields
@@ -404,7 +408,7 @@ class FlaskSerializeMixin:
         # can be replaced using __fs_column_type_converters__
         d = {}
 
-        for c in self.__fs_get_fields():
+        for c in self._fs_get_fields():
             try:
                 d[c.name] = v = getattr(self, c.name, "")
             except Exception as e:
@@ -429,22 +433,22 @@ class FlaskSerializeMixin:
         :param field:
         :return: class of the type
         """
-        props = self.__fs_get_props()
+        props = self._fs_get_props()
         if props:
             for f in props.field_list:
                 if f.name == field:
                     if (
-                            f.c_type.startswith("VARCHAR")
-                            or f.c_type.startswith("CHAR")
-                            or f.c_type.startswith("TEXT")
+                        f.c_type.startswith("VARCHAR")
+                        or f.c_type.startswith("CHAR")
+                        or f.c_type.startswith("TEXT")
                     ):
                         return str
                     if f.c_type.startswith("INTEGER"):
                         return int
                     if (
-                            f.c_type.startswith("FLOAT")
-                            or f.c_type.startswith("REAL")
-                            or f.c_type.startswith("NUMERIC")
+                        f.c_type.startswith("FLOAT")
+                        or f.c_type.startswith("REAL")
+                        or f.c_type.startswith("NUMERIC")
                     ):
                         return float
                     if f.c_type.startswith("DATE") or f.c_type.startswith("TIME"):
@@ -482,6 +486,14 @@ class FlaskSerializeMixin:
         return value
 
     @classmethod
+    def _fs_get_field_name(cls, field):
+        if isinstance(field, str):
+            return field
+        if cls.db and isinstance(field, cls.db.Column):
+            return field.name
+        return str(field).split(".")[-1]
+
+    @classmethod
     def fs_request_create_form(cls, **kwargs):
         """
         create a new item from a form in the current request object
@@ -498,8 +510,9 @@ class FlaskSerializeMixin:
         if len(__fs_create_fields__ or "") == 0:
             __fs_create_fields__ = [
                 c.name
-                for c in new_item.__fs_get_fields()
-                if isinstance(c, cls.db.Column) and c.name != new_item.__fs_get_props().primary_key_field
+                for c in new_item._fs_get_fields()
+                if isinstance(c, cls.db.Column)
+                and c.name != new_item._fs_get_props().primary_key_field
             ]
 
         try:
@@ -509,8 +522,7 @@ class FlaskSerializeMixin:
 
         if len(json_data) > 0:
             for field in __fs_create_fields__:
-                if cls.db and isinstance(field, cls.db.Column):
-                    field = field.name
+                field = cls._fs_get_field_name(field)
                 if field in json_data:
                     value = json_data.get(field)
                     setattr(new_item, field, new_item.__fs_convert_value(field, value))
@@ -592,13 +604,12 @@ class FlaskSerializeMixin:
         if len(self.__fs_update_fields__ or "") == 0:
             __fs_update_fields__ = [
                 c.name
-                for c in self.__fs_get_fields()
+                for c in self._fs_get_fields()
                 if isinstance(c, self.db.Column)
-                   and c.name != self.__fs_get_props().primary_key_field
+                and c.name != self._fs_get_props().primary_key_field
             ]
         for field in __fs_update_fields__:
-            if self.db and isinstance(field, self.db.Column):
-                field = field.name
+            field = self._fs_get_field_name(field)
             self.__fs_previous_field_value__[field] = getattr(self, field)
             if field in data_dict:
                 setattr(self, field, self.__fs_convert_value(field, data_dict[field]))

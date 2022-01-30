@@ -168,7 +168,7 @@ def route_setting_update_post(item_id):
     item = Setting.query.get_or_404(item_id)
     try:
         if not item.fs_request_update_form():
-            return Response('update not allowed', 403)
+            return Response("update not allowed", 403)
     except Exception as e:
         print(e)
         return Response("POST Error updating item: " + str(e), 500)
@@ -250,7 +250,7 @@ def route_user(item_id=None):
 
 @app.route("/user_add_data/<int:item_id>", methods=["POST"])
 def route_user_add_data(item_id):
-    value = request.form.get('data', '')
+    value = request.form.get("data", "")
     user = User.query.get_or_404(item_id)
     user_data = UserData(user=user, value=value)
     db.session.add(user_data)
@@ -313,7 +313,7 @@ class User(fs_mixin, db.Model):
         "UserData", backref="user", cascade="all, delete-orphan"
     )
 
-    __fs_relationship_fields__ = ['data_items']
+    __fs_relationship_fields__ = ["data_items"]
 
 
 class UserData(fs_mixin, db.Model):
@@ -366,7 +366,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "key",
         "active",
         "number",
-        "floaty",
+        floaty,
         "scheduled",
         "deci",
         "lob",
@@ -382,9 +382,10 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "deci",
         "lob",
     ]
-    __fs_exclude_serialize_fields__ = ["created"]
+
+    __fs_exclude_serialize_fields__ = [created]
     __fs_exclude_json_serialize_fields__ = ["updated"]
-    __fs_relationship_fields__ = ["sub_settings", "single"]
+    __fs_relationship_fields__ = [sub_settings, "single"]
     __fs_update_properties__ = ["prop_test"]
     __fs_order_by_field__ = "value"
     # lob
@@ -438,7 +439,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
 
     # checks if Flask-Serialize can access
     def __fs_can_update__(self):
-        if self.value == '9999':
+        if self.value == "9999":
             return False
         if not self.__fs_can_access__():
             raise Exception("Update not allowed.  Magic value!")
@@ -523,7 +524,7 @@ class SimpleModel(fs_mixin, db.Model):
 class BadModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default="")
-    __fs_column_type_converters__ = {'VARCHAR': lambda x: x / 0}
+    __fs_column_type_converters__ = {"VARCHAR": lambda x: x / 0}
 
     def __repr__(self):
         return "<BadModel %r>" % (self.value)

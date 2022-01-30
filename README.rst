@@ -984,6 +984,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 Release Notes
 -------------
 
+* 2.0.3 - Allow more use of model column variables instead of "quoted" field names.  Fix missing import for FlaskSerialize.
 * 2.0.2 - Fix table formatting.
 * 2.0.1 - Try to get properties and methods to use more appropriate names.
 * 1.5.2 - Test with flask 2.0.  Add __fs_after_commit__ method to allow post create/update actions.  Improve documentation.

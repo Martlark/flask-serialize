@@ -815,6 +815,9 @@ def test_user(client):
 
 
 def test_readme_list():
+    """
+        Test that README.rst is good restructured text
+    """
     import restructuredtext_lint
     errors = restructuredtext_lint.lint_file('../README.rst')
     if len(errors):
