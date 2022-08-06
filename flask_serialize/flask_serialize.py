@@ -64,10 +64,18 @@ class FlaskSerializeMixin:
 
     @staticmethod
     def __fs_json_converter__(value):
+        """
+        convert a json string to a dict using json
+
+        :param value:
+        :return:
+        """
         if value == "":
             value = "{}"
         try:
-            j_value = json.loads(value)
+            j_value = value
+            if isinstance(value, str):
+                j_value = json.loads(value)
             return j_value
         except:
             return dict()
@@ -292,6 +300,8 @@ class FlaskSerializeMixin:
         """
         if isinstance(relationships, FlaskSerializeMixin):
             return relationships.fs_as_dict
+        if isinstance(relationships, str):
+            return relationships
         return [item.fs_as_dict for item in relationships]
 
     @staticmethod
@@ -308,7 +318,37 @@ class FlaskSerializeMixin:
         return value
 
     @staticmethod
-    def __fs_sqlite_date_converter(value):
+    def __fs_sqlite_from_str_json_converter(value):
+        """
+        convert a sqlite json string into a dict
+
+        :param value: string to convert
+        :return: decoded string
+        """
+        if not value:
+            return dict()
+
+        if isinstance(value, str):
+            value = json.loads(value)
+        return value
+
+    @staticmethod
+    def __fs_sqlite_to_str_json_converter(value):
+        """
+        convert a sqlite json string from a dict to a string
+
+        :param value: string to convert
+        :return: decoded string
+        """
+        if not value:
+            return "{}"
+
+        if isinstance(value, dict) or isinstance(value, list):
+            value = json.dumps(value)
+        return value
+
+    @staticmethod
+    def __fs_sqlite_to_date_converter(value):
         """
         convert an ISO-9 date or datetime from a form etc into a datetime as sqlite does
         not handle date conversions nicely
@@ -319,10 +359,18 @@ class FlaskSerializeMixin:
         if isinstance(value, datetime) or isinstance(value, time):
             return value
         # assumes ISO 8601 as per javascript standard for dates
-        try:
-            return datetime.strptime(value, "%Y-%m-%dT%H:%M")
-        except:
-            return datetime.strptime(value, "%Y-%m-%d")
+        for date_format in [
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
+        ]:
+            try:
+                return datetime.strptime(value, date_format)
+            except:
+                pass
+        raise Exception(f"could not covert: {value} to datetime")
 
     def _fs_get_props(self):
         """
@@ -353,9 +401,14 @@ class FlaskSerializeMixin:
             field_list = list(self.__table__.columns)
             if "sqlite" in self.__table__.dialect_options:
                 props.DIALECT = "sqlite"
-                self.__fs_convert_types__.append(
-                    {"type": datetime, "method": self.__fs_sqlite_date_converter}
-                ),
+                self.__fs_convert_types__.insert(
+                    0, {"type": datetime, "method": self.__fs_sqlite_to_date_converter}
+                )
+                self.__fs_convert_types__.insert(
+                    0, {"type": dict, "method": self.__fs_sqlite_to_str_json_converter}
+                )
+                props.converters["JSON"] = self.__fs_sqlite_from_str_json_converter
+
             for o in self.__fs_convert_types_original__:
                 self.__fs_convert_types__.append(o)
             # detect primary field
@@ -482,7 +535,7 @@ class FlaskSerializeMixin:
 
         return None
 
-    def __fs_convert_value(self, name, value):
+    def __fs_convert_value_to_db_suitable_value(self, name, value):
         """
         convert the value based upon type to a representation suitable for saving to the db
         override built in conversions by setting the value of __fs_convert_types__.
@@ -553,7 +606,11 @@ class FlaskSerializeMixin:
                 field = cls._fs_get_field_name(field)
                 if field in json_data:
                     value = json_data.get(field)
-                    setattr(new_item, field, new_item.__fs_convert_value(field, value))
+                    setattr(
+                        new_item,
+                        field,
+                        new_item.__fs_convert_value_to_db_suitable_value(field, value),
+                    )
 
         new_item.__fs_verify__(create=True)
         new_item.__fs_update_timestamp__()
@@ -640,7 +697,13 @@ class FlaskSerializeMixin:
             field = self._fs_get_field_name(field)
             self.__fs_previous_field_value__[field] = getattr(self, field)
             if field in data_dict:
-                setattr(self, field, self.__fs_convert_value(field, data_dict[field]))
+                setattr(
+                    self,
+                    field,
+                    self.__fs_convert_value_to_db_suitable_value(
+                        field, data_dict[field]
+                    ),
+                )
 
     def __fs_can_access__(self):
         """

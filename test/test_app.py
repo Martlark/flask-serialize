@@ -53,6 +53,7 @@ class TestBase(flask_unittest.AppClientTestCase):
         db.session.execute(text("drop table if exists test_table"))
         db.session.remove()
 
+
 class TestAll(TestBase):
     def add_setting(self, client, key=random_string(), value="test-value", number=0):
         rv = client.post(
@@ -63,7 +64,6 @@ class TestAll(TestBase):
         item = Setting.query.filter_by(key=key).first()
         assert item
         return item
-
 
     def test__fs_order_by_field__(self, app, client):
         # add plenty
@@ -95,7 +95,6 @@ class TestAll(TestBase):
         for z in range(count):
             assert json_settings[z]["value"] == sorted_list[z]["value"]
 
-
     def test_get_filter(self, app, client):
         key_1 = random_string()
         key_2 = random_string()
@@ -111,7 +110,6 @@ class TestAll(TestBase):
         rv = client.get(f"/setting_get_all?key={key_2}")
         assert len(rv.json) == 1
         assert rv.json[0]["key"] == key_2
-
 
     def test_get_all(self, app, client):
         rv = client.get("/setting_get_all")
@@ -134,7 +132,6 @@ class TestAll(TestBase):
         assert len(fs_dict_list) == 1
         assert fs_dict_list[0]["key"] == key
 
-
     def test_get_user(self, app, client):
         key = random_string()
         # test add 2 settings
@@ -152,7 +149,7 @@ class TestAll(TestBase):
         assert len(rv.json) == 1
         item = rv.json[0]
         assert item["user"] == test_user_name
-        item_id = item['id']
+        item_id = item["id"]
         rv = client.get("/setting_id_user/{}/{}".format(item_id, test_user_name))
         assert rv.json["user"] == test_user_name
         # should not be found
@@ -171,13 +168,14 @@ class TestAll(TestBase):
         rv = client.put(f"/setting_update/{item_id}", data=dict(value="123456789"))
         assert 200 == rv.status_code
         try:
-            user_404 = Setting.fs_get_by_user_or_404(item_id=item_id, user=test_user_name)
+            user_404 = Setting.fs_get_by_user_or_404(
+                item_id=item_id, user=test_user_name
+            )
         except Exception as e:
             assert "404 Not Found:" in str(e)
         assert user_404 is None
         rv = client.get("/setting_get/{}".format(item_id))
         assert 403 == rv.status_code
-
 
     def test_get_property(self, app, client):
         key = random_string()
@@ -197,10 +195,11 @@ class TestAll(TestBase):
 
         assert rv.json["prop_datetime"] == str(setting_created).split(".")[0]
         assert rv.json["prop_test_dict"] == {"prop": test_value}
-        assert rv.json["prop_complex"] == str(complex(setting_number, setting_number * 2))
+        assert rv.json["prop_complex"] == str(
+            complex(setting_number, setting_number * 2)
+        )
         assert set(rv.json["prop_set"]) == set([3, 1, 2, "four"])
         assert rv.json["last_sub_setting"]["flong"] == flong_value
-
 
     def test_relationships(self, app, client):
         key = random_string()
@@ -220,14 +219,15 @@ class TestAll(TestBase):
         assert len(rv.json[0]["sub_settings"]) == 1
         assert rv.json[0]["sub_settings"][0]["flong"] == "blong"
 
-
     def test_prop_filters(self, app, client):
         # test add
         filter_key = random_string()
         for _ in range(10):
             client.post(
                 "/setting_add",
-                data=dict(setting_type="test", key=random_string(), value=random_string()),
+                data=dict(
+                    setting_type="test", key=random_string(), value=random_string()
+                ),
             )
 
         client.post(
@@ -239,13 +239,13 @@ class TestAll(TestBase):
         assert 1 == len(rv.json)
         assert filter_key == rv.json[0]["key"]
 
-
     def test_private_field(self, app, client):
         # create
         excluded_key = "private"
         value = "123789"
         rv = client.post(
-            "/setting_add", data=dict(setting_type="test", key=excluded_key, value=value)
+            "/setting_add",
+            data=dict(setting_type="test", key=excluded_key, value=value),
         )
 
         # value is excluded from dict list
@@ -253,13 +253,13 @@ class TestAll(TestBase):
         items = Setting.fs_dict_list(query)
         assert "key" not in items[0]
 
-
     def test__fs_can_access___update(self, app, client):
         # create
         excluded_key = random_string()
         value = "123456789"
         rv = client.post(
-            "/setting_add", data=dict(setting_type="test", key=excluded_key, value=value)
+            "/setting_add",
+            data=dict(setting_type="test", key=excluded_key, value=value),
         )
         assert rv.status_code == 302
         item = Setting.query.filter_by(key=excluded_key).first()
@@ -272,7 +272,9 @@ class TestAll(TestBase):
         )
         key = random_string()
         value = random_string()
-        client.post("/setting_add", data=dict(setting_type="test", key=key, value=value))
+        client.post(
+            "/setting_add", data=dict(setting_type="test", key=key, value=value)
+        )
 
         # one value is excluded
         with app.app_context():
@@ -288,7 +290,9 @@ class TestAll(TestBase):
             l = json.loads(r.response[0])
             assert len(l) == 2
         # try to update
-        rv = client.put("/setting_update/{}".format(excluded_id), json=dict(active=False))
+        rv = client.put(
+            "/setting_update/{}".format(excluded_id), json=dict(active=False)
+        )
         assert rv.status_code != 200
         assert b"PUT Error updating item: Update not allowed.  Magic value!" == rv.data
 
@@ -297,13 +301,13 @@ class TestAll(TestBase):
         result_list = Setting.fs_query_by_access(user="Andrew", setting_type="test")
         assert len(result_list) == 1  # no robert
 
-
     def test__can_update_returns_false(self, app, client):
         # test return False
         excluded_key = random_string()
         value = "9999"
         rv = client.post(
-            "/setting_add", data=dict(setting_type="test", key=excluded_key, value=value)
+            "/setting_add",
+            data=dict(setting_type="test", key=excluded_key, value=value),
         )
         assert rv.status_code == 302
         item = Setting.query.filter_by(key=excluded_key).first()
@@ -312,7 +316,6 @@ class TestAll(TestBase):
 
         rv = client.post(f"/setting_post/{item.id}", data=dict(active=False))
         assert 403 == rv.status_code, rv.data
-
 
     def test__fs_can_delete__(self, app, client):
         # create
@@ -329,18 +332,19 @@ class TestAll(TestBase):
         assert rv.status_code == 400
         assert rv.data == b"Deletion not allowed.  Magic value!"
 
-
     def test_column_conversion(self, app, client):
         # create
         key = random_string()
         value = "12.34"
-        j_value = dict(a=123,b=True)
-        rv = client.post("/setting_add", data=dict(setting_type="test", key=key, lob=value, j=j_value))
+        j_value = dict(a=123, b=True)
+        rv = client.post(
+            "/setting_add",
+            data=dict(setting_type="test", key=key, lob=value, j=json.dumps(j_value)),
+        )
         # get
         item = Setting.query.filter_by(key=key).first()
         assert item.fs_as_dict["lob"] == value
         self.assertEqual(j_value, item.fs_as_dict["j"], item.fs_as_dict)
-
 
     def test_update_create_type_conversion(self, app, client):
         # create
@@ -360,7 +364,9 @@ class TestAll(TestBase):
         item = Setting.query.filter_by(key=key).first()
         assert "n" == item.active, item
         # query parameters as strings so bool converter does not work
-        rv = client.put("/setting_update/{}".format(item.id), query_string=dict(active="y"))
+        rv = client.put(
+            "/setting_update/{}".format(item.id), query_string=dict(active="y")
+        )
         assert rv.status_code == 200
         assert rv.data == b"Updated"
 
@@ -381,7 +387,6 @@ class TestAll(TestBase):
             ss = SubSetting.query.get_or_404(ss_id)
             assert new_boolean == ss.boolean
 
-
     def test_bad_convert_type(self, app, client):
         value = random_string()
         rv = client.post(
@@ -389,8 +394,7 @@ class TestAll(TestBase):
             data=dict(value=value),
         )
         assert 200 == rv.status_code
-        assert "Failed to convert [value]" in rv.data.decode('utf-8'), rv
-
+        assert "Failed to convert [value]" in rv.data.decode("utf-8"), rv
 
     def test_convert_type(self, app, client):
         # add conversion type
@@ -420,7 +424,6 @@ class TestAll(TestBase):
         # explicit double conversion type
         assert int_value_to_convert * convert_multiple == item.number
 
-
     def test_sqlite_datetime_convert_type(self, app, client):
         # test sqlite conversion types
         date_value = "2004-05-23"
@@ -434,7 +437,6 @@ class TestAll(TestBase):
         item = DateTest.query.first()
         # explicit double conversion type
         assert item.a_date == datetime.strptime(date_value, "%Y-%m-%d")
-
 
     def test_excluded(self, app, client):
         # create
@@ -452,7 +454,6 @@ class TestAll(TestBase):
         assert rv.status_code == 200
         assert "created" not in item.fs_as_dict
         assert "updated" in item.fs_as_dict
-
 
     def test__fs_before_update__(self, app, client):
         key = random_string()
@@ -478,7 +479,6 @@ class TestAll(TestBase):
         assert rv.json["message"] == "Updated"
         item = Setting.query.get_or_404(item.id)
         assert "n" == item.active
-
 
     def test_fs_get_delete_put_post(self, app, client):
         key = random_string()
@@ -545,13 +545,13 @@ class TestAll(TestBase):
         assert rv.status_code == 400
         assert rv.data == b"Missing key"
 
-
     def test_create_update_json(self, app, client):
         # create
         key = random_string()
         value = random_string()
         rv = client.post(
-            "/setting_post", json=dict(setting_type="test", key=key, value=value, number=10)
+            "/setting_post",
+            json=dict(setting_type="test", key=key, value=value, number=10),
         )
         assert rv.status_code == 200
         item = Setting.query.filter_by(key=key).first()
@@ -579,13 +579,13 @@ class TestAll(TestBase):
             Setting.__fs_scheduled_date_format__
         ) == dt_now.strftime(Setting.__fs_scheduled_date_format__)
 
-
     def test_create_update_delete(self, app, client):
         # create
         key = random_string()
         value = random_string()
         rv = client.post(
-            "/setting_add", data=dict(setting_type="test", key=key, value=value, number=10)
+            "/setting_add",
+            data=dict(setting_type="test", key=key, value=value, number=10),
         )
         assert rv.status_code == 302, rv.data
         item = Setting.query.filter_by(key=key).first()
@@ -630,7 +630,6 @@ class TestAll(TestBase):
         item = Setting.query.filter_by(key=key).first()
         assert not item
 
-
     def test_no_db(self, app, client):
         # create
         old_db = Setting.db
@@ -639,16 +638,15 @@ class TestAll(TestBase):
         rv = client.post("/datetest", data=dict(a_date=date_value))
         DateTest.db = old_db
         assert rv.status_code == 400, rv.data
-        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode("utf-8")
         rv = client.post("/datetest", data=dict(a_date=date_value))
-        new_id = rv.json['id']
+        new_id = rv.json["id"]
         DateTest.db = None
         rv = client.put(f"/datetest/{new_id}", data=dict(a_date=date_value))
-        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode("utf-8")
         rv = client.delete(f"/datetest/{new_id}", data=dict(a_date=date_value))
-        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode('utf-8')
+        assert 'FlaskSerializeMixin property "db" is not set' in rv.data.decode("utf-8")
         DateTest.db = old_db
-
 
     def test_form_page(self, app, client):
         # create
@@ -694,7 +692,6 @@ class TestAll(TestBase):
         assert rv.status_code == 200
         assert b"Missing key" in rv.data
 
-
     def test_default__fs_create_fields__(self, app, client):
         key = random_string()
         value = random_string()
@@ -714,7 +711,6 @@ class TestAll(TestBase):
         assert item.value == value, item
         assert item.prop_test == "prop:" + value, item
         Setting.__fs_create_fields__ = old___fs_create_fields__
-
 
     def test_simple_model__fs_update_fields__(self, app, client):
         value = random_string()
@@ -742,7 +738,6 @@ class TestAll(TestBase):
         assert rv.json["item"]["prop"] == "prop:" + value, rv.data
         assert b"Updated" in rv.data, rv.data
 
-
     def test_override_datetime_conversion(self, app, client):
         key = random_string()
         test_value = random_string()
@@ -756,7 +751,6 @@ class TestAll(TestBase):
         unix_time = int(time.mktime(sub.created.timetuple())) * 1000
         assert type(sub.fs_as_dict["created"]) == int
         assert sub.fs_as_dict["created"] == unix_time
-
 
     def test_fs_json_get(self, app, client):
         key = random_string()
@@ -781,8 +775,9 @@ class TestAll(TestBase):
         assert rv.json["value"] == test_value
         assert rv.json["key"] == key
         assert rv.json["setting_type"] == setting_type
-        assert client.get("/setting_fs_json_first/{}".format(random_string())).json == {}
-
+        assert (
+            client.get("/setting_fs_json_first/{}".format(random_string())).json == {}
+        )
 
     def test_get_0_is_not_null(self, app, client):
         key = random_string()
@@ -799,7 +794,6 @@ class TestAll(TestBase):
         assert rv.status_code == 200
         assert rv.json["key"] == key
 
-
     def test_timestamp_is_updated_and_can_be_overridden(self, app, client):
         key = random_string()
         item = Setting(setting_type="hello", value=random_string(), key=key)
@@ -813,16 +807,15 @@ class TestAll(TestBase):
         # update using put
         new_value = random_string()
         assert (
-                200
-                == client.put(
-            "/sub_setting_put/{}".format(sub_item_id), json=dict(flong=new_value)
-        ).status_code
+            200
+            == client.put(
+                "/sub_setting_put/{}".format(sub_item_id), json=dict(flong=new_value)
+            ).status_code
         )
         updated_item = SubSetting.query.get_or_404(sub_item_id)
         assert updated_item.flong == new_value
         # test custom update works and that __fs_timestamp_fields__ works
         assert updated_when_created > updated_item.sub_updated
-
 
     def test_user(self, app, client):
         test_value = random_string()
@@ -835,4 +828,4 @@ class TestAll(TestBase):
         # add data
         rv = client.post(f"/user_add_data/{user_id}", data={"data": test_value})
         assert rv.json["name"] == user_name
-        assert test_value in [item.get('value') for item in rv.json["data_items"]]
+        assert test_value in [item.get("value") for item in rv.json["data_items"]]
