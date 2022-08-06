@@ -334,10 +334,12 @@ class TestAll(TestBase):
         # create
         key = random_string()
         value = "12.34"
-        rv = client.post("/setting_add", data=dict(setting_type="test", key=key, lob=value))
+        j_value = dict(a=123,b=True)
+        rv = client.post("/setting_add", data=dict(setting_type="test", key=key, lob=value, j=j_value))
         # get
         item = Setting.query.filter_by(key=key).first()
         assert item.fs_as_dict["lob"] == value
+        self.assertEqual(j_value, item.fs_as_dict["j"], item.fs_as_dict)
 
 
     def test_update_create_type_conversion(self, app, client):

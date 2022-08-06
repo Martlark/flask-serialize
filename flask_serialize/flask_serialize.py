@@ -60,7 +60,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __fs_version__ = "2.0.3"
+    __fs_version__ = "2.0.4"
 
     @staticmethod
     def __fs_json_converter__(value):
@@ -70,7 +70,7 @@ class FlaskSerializeMixin:
             j_value = json.loads(value)
             return j_value
         except:
-            return ""
+            return dict()
 
     def __fs_before_update__(self, data_dict: dict) -> dict:
         """

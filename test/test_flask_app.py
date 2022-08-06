@@ -55,7 +55,7 @@ class EditForm(FlaskForm):
     value = StringField("value")
     number = IntegerField("number")
     deci = DecimalField("deci")
-    # j = StringField("j")
+    j = StringField("j")
     submit = SubmitField()
 
 
