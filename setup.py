@@ -17,14 +17,14 @@ from setuptools import setup
 
 
 VERSION = "2.0.3"
-LONG_DESCRIPTION = open("README.rst", "r", encoding="utf-8").read()
+LONG_DESCRIPTION = open("README.md", "r", encoding="utf-8").read()
 
 setup(
     name="flask-serialize",
     version=VERSION,
     description="Easy to use JSON serialization and update/create for Flask and SQLAlchemy.",
     long_description=LONG_DESCRIPTION,
-    long_description_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     url="https://github.com/Martlark/flask-serialize",
     download_url="https://github.com/Martlark/flask-serialize/archive/{version}.tar.gz".format(
         version=VERSION

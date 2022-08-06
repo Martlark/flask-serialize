@@ -9,5 +9,5 @@ flask-wtf
 setuptools
 wheel
 twine
-restructuredtext_lint
 black
+flask-unittest

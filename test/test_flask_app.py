@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import string
@@ -17,7 +18,10 @@ from wtforms import (
     SubmitField,
 )
 
-from flask_serialize.flask_serialize import FlaskSerialize
+from flask_serialize.flask_serialize import (
+    FlaskSerialize,
+    FlaskSerializeMixin,
+)
 from flask_serialize.form_page import FormPageMixin
 
 app = Flask("test_app")
@@ -28,8 +32,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 )
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+FlaskSerializeMixin.db = db
 fs_mixin = FlaskSerialize(db)
-
 
 # =========================
 # TINY TEST FLASK APP
@@ -51,6 +55,7 @@ class EditForm(FlaskForm):
     value = StringField("value")
     number = IntegerField("number")
     deci = DecimalField("deci")
+    # j = StringField("j")
     submit = SubmitField()
 
 
@@ -335,7 +340,7 @@ class DateTest(fs_mixin, db.Model):
     __fs_update_fields__ = __fs_create_fields__ = ["a_date"]
 
 
-class Setting(fs_mixin, FormPageMixin, db.Model):
+class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     setting_type = db.Column(db.String(120), index=True, default="misc")
@@ -350,6 +355,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
     floaty = db.Column(db.Float(), default=1.1)
     deci = db.Column(db.Numeric(2), default=0.0)
     # converter fields
+    j = db.Column(db.JSON, default={"number_1": 1, "bool_true": True})
     lob = db.Column(db.LargeBinary())
     # relationships
     sub_settings = db.relationship(
@@ -370,6 +376,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "scheduled",
         "deci",
         "lob",
+        j,
     ]
     __fs_create_fields__ = [
         setting_type,
@@ -381,6 +388,7 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
         "number",
         "deci",
         "lob",
+        j,
     ]
 
     __fs_exclude_serialize_fields__ = [created]
@@ -406,7 +414,6 @@ class Setting(fs_mixin, FormPageMixin, db.Model):
                 n, Setting.__fs_scheduled_date_format__
             ),
         },
-        {"type": bytes, "method": lambda v: v.encode()},
     ]
     # form_page
     form_page_form = EditForm

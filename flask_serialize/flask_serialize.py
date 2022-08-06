@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, time
 from typing import Type, List
 
@@ -36,11 +37,17 @@ class FlaskSerializeMixin:
     __fs_relationship_fields__ = []
     # add your own converters here
     __fs_column_type_converters__ = {}
-    # add or replace conversion types
+    # add or replace conversion types to the DB
     __fs_convert_types__ = [
         {"type": bool, "method": lambda v: "y" if v else "n"},
         {"type": bytes, "method": lambda v: v.encode()},
+        {
+            "type": dict,
+            "method": lambda v: FlaskSerializeMixin.__fs_json_converter__(v),
+        },
     ]
+    __fs_convert_types_original__ = __fs_convert_types__.copy()
+    # types that can be converted to json
     __fs_json_types = [str, dict, list, int, float, bool]
     # default field name when restricting to a particular user
     __fs_user_field__ = "user"
@@ -54,6 +61,16 @@ class FlaskSerializeMixin:
     __fs_previous_field_value__ = {}
     # current version
     __fs_version__ = "2.0.3"
+
+    @staticmethod
+    def __fs_json_converter__(value):
+        if value == "":
+            value = "{}"
+        try:
+            j_value = json.loads(value)
+            return j_value
+        except:
+            return ""
 
     def __fs_before_update__(self, data_dict: dict) -> dict:
         """
@@ -339,6 +356,8 @@ class FlaskSerializeMixin:
                 self.__fs_convert_types__.append(
                     {"type": datetime, "method": self.__fs_sqlite_date_converter}
                 ),
+            for o in self.__fs_convert_types_original__:
+                self.__fs_convert_types__.append(o)
             # detect primary field
             for f in field_list:
                 if f.primary_key:
@@ -393,7 +412,7 @@ class FlaskSerializeMixin:
         return fields
 
     @property
-    def fs_as_dict(self):
+    def fs_as_dict(self) -> dict:
         """
         convert a sql alchemy query result item to dict
         override these properties to control the result:
@@ -401,7 +420,7 @@ class FlaskSerializeMixin:
         * __fs_relationship_fields__ - follow relationships listed
         * __fs_exclude_serialize_fields__ - exclude listed fields from serialization
         * __fs_column_type_converters__ - add additional sql column type converters to DATETIME, PROPERTY and RELATIONSHIP
-        :return {dictionary} the item as a dict
+        :return {dict} the item as a dict
         """
 
         # built in converters
@@ -430,7 +449,8 @@ class FlaskSerializeMixin:
         """
         get the type of the update to db field from cached table properties
 
-        :param field:
+        :param field: the field to lookup
+        :param value: unused
         :return: class of the type
         """
         props = self._fs_get_props()
@@ -455,6 +475,8 @@ class FlaskSerializeMixin:
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
                         return bool
+                    # if "JSON" in f.c_type:
+                    #     return dict
                     if "LOB" in f.c_type:
                         return bytes
 
@@ -486,7 +508,13 @@ class FlaskSerializeMixin:
         return value
 
     @classmethod
-    def _fs_get_field_name(cls, field):
+    def _fs_get_field_name(cls, field) -> str:
+        """
+        return the column name of the field type or string
+
+        :param field: field to be looked up
+        :return: str
+        """
         if isinstance(field, str):
             return field
         if cls.db and isinstance(field, cls.db.Column):
@@ -506,9 +534,9 @@ class FlaskSerializeMixin:
 
         new_item = cls(**kwargs)
 
-        __fs_create_fields__ = list(new_item.__fs_create_fields__)
-        if len(__fs_create_fields__ or "") == 0:
-            __fs_create_fields__ = [
+        fs_create_fields = list(new_item.__fs_create_fields__)
+        if len(fs_create_fields or "") == 0:
+            fs_create_fields = [
                 c.name
                 for c in new_item._fs_get_fields()
                 if isinstance(c, cls.db.Column)
@@ -521,7 +549,7 @@ class FlaskSerializeMixin:
             json_data = request.form
 
         if len(json_data) > 0:
-            for field in __fs_create_fields__:
+            for field in fs_create_fields:
                 field = cls._fs_get_field_name(field)
                 if field in json_data:
                     value = json_data.get(field)
@@ -534,11 +562,11 @@ class FlaskSerializeMixin:
         new_item.__fs_after_commit__(create=True)
         return new_item
 
-    def __fs_request_update(self, json_data):
+    def __fs_request_update(self, json_data: dict) -> bool:
         """
         update the current db object
-
-        :return:
+        :param json_data:
+        :return: boolean
         """
         if not self.__fs_can_update__():
             return False
@@ -591,7 +619,7 @@ class FlaskSerializeMixin:
             if hasattr(self, field):
                 setattr(self, field, self.__fs_timestamp_stamper__())
 
-    def fs_update_from_dict(self, data_dict):
+    def fs_update_from_dict(self, data_dict: dict) -> None:
         """
         uses a dict to update fields of the model instance.  sets previous values to
         self.previous_values[field_name] before the update
@@ -710,7 +738,8 @@ class FlaskSerializeMixin:
                 return item.fs_as_json
 
             elif request.method == "POST" or request.method == "PUT":
-                # update single item
+                # update single item with locked row
+                item = cls.query.with_for_update(of=cls).get_or_404(item_id)
                 if item.fs_request_update_form():
                     return jsonify(
                         dict(
@@ -719,6 +748,7 @@ class FlaskSerializeMixin:
                             properties=item.__fs_return_properties(),
                         )
                     )
+                cls.db.session.rollback()
                 return Response("UPDATE forbidden", 403)
 
             elif request.method == "DELETE":
