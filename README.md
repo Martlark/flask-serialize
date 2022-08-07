@@ -935,7 +935,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
-- 2.0.4 - Convert readme to markdown.
+- 2.0.4 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.
 - 2.0.3 - Allow more use of model column variables instead of "quoted" field names.  Fix missing import for FlaskSerialize.
 - 2.0.2 - Fix table formatting.
 - 2.0.1 - Try to get properties and methods to use more appropriate names.
