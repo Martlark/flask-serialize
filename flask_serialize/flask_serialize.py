@@ -1,3 +1,4 @@
+import ast
 import json
 from datetime import datetime, time
 from typing import Type, List
@@ -65,19 +66,28 @@ class FlaskSerializeMixin:
     @staticmethod
     def __fs_json_converter__(value):
         """
-        convert a json string to a dict using json
+        convert a json string to a dict using json if required.
+        if encoder error try converting from direct Python
+        If not a string then use the value directly
 
         :param value:
         :return:
         """
         if value == "":
-            value = "{}"
+            return dict()
+
         try:
             j_value = value
-            if isinstance(value, str):
-                j_value = json.loads(value)
+            if type(value) in [str]:
+                try:
+                    j_value = json.loads(value)
+                except json.JSONDecodeError:
+                    j_value = ast.literal_eval(value)
+            elif type(value) not in FlaskSerializeMixin.__fs_json_types:
+                raise Exception(f"unsupported value type: {type(value)}")
             return j_value
-        except:
+        except Exception as e:
+            print(f"exception: {e} converting: {value} to JSON")
             return dict()
 
     def __fs_before_update__(self, data_dict: dict) -> dict:
@@ -325,25 +335,30 @@ class FlaskSerializeMixin:
         :param value: string to convert
         :return: decoded string
         """
-        if not value:
-            return dict()
-
         if isinstance(value, str):
             value = json.loads(value)
+
+        if value in ["", None]:
+            return dict()
+
         return value
 
     @staticmethod
     def __fs_sqlite_to_str_json_converter(value):
         """
-        convert a sqlite json string from a dict to a string
+        convert a sqlite json string from a type that can be json
+        to a string. if already a string then leave be
 
         :param value: string to convert
         :return: decoded string
         """
-        if not value:
+        if value in ["", None]:
             return "{}"
 
-        if isinstance(value, dict) or isinstance(value, list):
+        if type(value) == str:
+            return value
+
+        if type(value) in FlaskSerializeMixin.__fs_json_types:
             value = json.dumps(value)
         return value
 
@@ -528,8 +543,8 @@ class FlaskSerializeMixin:
                         return datetime
                     if f.c_type.startswith("BOOLEAN"):
                         return bool
-                    # if "JSON" in f.c_type:
-                    #     return dict
+                    if "JSON" in f.c_type:
+                        return dict
                     if "LOB" in f.c_type:
                         return bytes
 

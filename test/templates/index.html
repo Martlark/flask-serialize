@@ -7,6 +7,7 @@
             <th>key</th>
             <th>value</th>
             <th>number</th>
+            <th>j</th>
             <th>Action</th>
         </tr>
         </thead>
@@ -17,6 +18,7 @@
                 <td>{{ setting.key }}</td>
                 <td>{{ setting.value }}</td>
                 <td>{{ setting.number }}</td>
+                <td>{{ setting.j }}</td>
                 <td>
                     <button class="index-delete" data-id="{{ setting.id }}">Delete</button>
                 </td>
@@ -29,7 +31,7 @@
         <label>setting_type: <input name="setting_type" value="{{ setting_type }}"></label>
         <label>key: <input name="key" value="{{ key }}"></label>
         <label>value: <input name="value" value="{{ value }}"></label>
-        <label>JSON: <input name="j" value="{{ j }}"></label>
+        <label>j: <input name="j" value="{{ j }}"></label>
         <input type="submit">
     </form>
     <h3>JSON Settings ALL</h3>
