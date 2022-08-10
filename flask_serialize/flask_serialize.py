@@ -39,14 +39,11 @@ class FlaskSerializeMixin:
     # add your own converters here
     __fs_column_type_converters__ = {}
     # add or replace conversion types to the DB
-    __fs_convert_types__ = [
-        {"type": bool, "method": lambda v: "y" if v else "n"},
-        {"type": bytes, "method": lambda v: v.encode()},
-        {
-            "type": dict,
-            "method": lambda v: FlaskSerializeMixin.__fs_json_converter__(v),
-        },
-    ]
+    __fs_convert_types__ = {
+        str(bool): lambda v: "y" if v else "n",
+        str(bytes): lambda v: v.encode(),
+        str(dict): lambda v: FlaskSerializeMixin.__fs_json_converter__(v),
+    }
     __fs_convert_types_original__ = __fs_convert_types__.copy()
     # types that can be converted to json
     __fs_json_types = [str, dict, list, int, float, bool]
@@ -61,7 +58,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __fs_version__ = "2.0.4"
+    __fs_version__ = "2.1.0"
 
     @staticmethod
     def __fs_json_converter__(value):
@@ -416,16 +413,18 @@ class FlaskSerializeMixin:
             field_list = list(self.__table__.columns)
             if "sqlite" in self.__table__.dialect_options:
                 props.DIALECT = "sqlite"
-                self.__fs_convert_types__.insert(
-                    0, {"type": datetime, "method": self.__fs_sqlite_to_date_converter}
-                )
-                self.__fs_convert_types__.insert(
-                    0, {"type": dict, "method": self.__fs_sqlite_to_str_json_converter}
-                )
+                self.__fs_convert_types__[
+                    str(datetime)
+                ] = self.__fs_sqlite_to_date_converter
+                self.__fs_convert_types__[
+                    str(dict)
+                ] = self.__fs_sqlite_to_str_json_converter
                 props.converters["JSON"] = self.__fs_sqlite_from_str_json_converter
 
-            for o in self.__fs_convert_types_original__:
-                self.__fs_convert_types__.append(o)
+            for o, v in self.__fs_convert_types_original__.items():
+                if o not in self.__fs_convert_types__:
+                    self.__fs_convert_types__[o] = v
+
             # detect primary field
             for f in field_list:
                 if f.primary_key:
@@ -556,23 +555,24 @@ class FlaskSerializeMixin:
         override built in conversions by setting the value of __fs_convert_types__.
         First uses bare value to determine type and then uses db derived values
         ie:
-        __fs_convert_types__ = [{'type':bool, 'method': lambda x: not x}]
+        __fs_convert_types__ = {str(bool): lambda x: not x}
 
         :param name: name of the field to update
         :param value: value to update with
         :return: the converted value
         """
-        for t in self.__fs_convert_types__:
-            if isinstance(value, t["type"]):
-                value = t["method"](value)
-                return value
+        lookup_key = str(type(value))
+        if lookup_key in self.__fs_convert_types__:
+            value = self.__fs_convert_types__[lookup_key](value)
+            return value
 
         instance_type = self.__fs_get_update_field_type(name, value)
         if instance_type:
-            for t in self.__fs_convert_types__:
-                if instance_type == t["type"]:
-                    value = t["method"](value)
-                    return value
+            lookup_key = str(instance_type)
+            if lookup_key in self.__fs_convert_types__:
+                value = self.__fs_convert_types__[lookup_key](value)
+                return value
+
         return value
 
     @classmethod

@@ -16,7 +16,7 @@ from codecs import open
 from setuptools import setup
 
 
-VERSION = "2.0.3"
+VERSION = "2.1.0"
 LONG_DESCRIPTION = open("README.md", "r", encoding="utf-8").read()
 
 setup(

@@ -283,12 +283,9 @@ class SubSetting(fs_mixin, db.Model):
         "flong",
         "boolean",
     ]
-    __fs_convert_types__ = [
-        {
-            "type": bool,
-            "method": lambda v: (type(v) == bool and v) or str(v).lower() == "true",
-        },
-    ]
+    __fs_convert_types__ = {
+        str(bool): lambda v: (type(v) == bool and v) or str(v).lower() == "true"
+    }
 
     @staticmethod
     def one_day_ago():
@@ -399,21 +396,15 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     __fs_column_type_converters__ = {"LOB": lambda v: str(v)}
     # convert types
     __fs_scheduled_date_format__ = "%Y-%m-%d %H:%M:%S"
-    __fs_convert_types__ = [
-        {
-            "type": bool,
-            "method": lambda v: "y"
-            if (type(v) == bool and v) or str(v).lower() == "true"
-            else "n",
-        },
-        {"type": int, "method": lambda n: int(n) * 2},
-        {
-            "type": datetime,
-            "method": lambda n: datetime.strptime(
-                n, Setting.__fs_scheduled_date_format__
-            ),
-        },
-    ]
+    __fs_convert_types__ = {
+        str(bool): lambda v: "y"
+        if (type(v) == bool and v) or str(v).lower() == "true"
+        else "n",
+        str(int): lambda n: int(n) * 2,
+        str(datetime): lambda n: datetime.strptime(
+            n, Setting.__fs_scheduled_date_format__
+        ),
+    }
     # form_page
     form_page_form = EditForm
     form_page_route_update = "route_setting_form"

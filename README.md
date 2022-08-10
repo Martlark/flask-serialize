@@ -238,7 +238,7 @@ to the parent `Survey` is provided as a `kwargs` parameter to the method.
 
 As example: add a `Stat` object to a Survey object using the `fs_get_delete_put_post` convenience method.  The foreign key
 to the parent `Survey` is provided in the form data as survey_id.  `__fs_create_fields__` list must then include `survey_id` as
-the foreign key field to be set if you specify any `__fs_create_fields__`.  By default all fields are allowed to be included
+the foreign key field to be set if you specify any `__fs_create_fields__`.  By default, all fields are allowed to be included
 when creating.
 
 ```html
@@ -311,7 +311,7 @@ form data {body="hello", subject="something"}
             return 'Updated'
 ```
 
-## __fs_verify__ write and create
+## `__fs_verify__` write and create
 
 ```python
 def  __fs_verify__(self, create=False):
@@ -335,12 +335,12 @@ allow deletion.
 def __fs_can_delete__(self):
 ```
 
-Override the mixin __fs_can_delete__ to provide control over when an
+Override the mixin `__fs_can_delete__` to provide control over when an
 item can be deleted.  Simply raise an exception
 when there is a problem.   By default `__fs_can_delete__`
 calls `__fs_can_update__` unless overridden.  See model example.
 
-## __fs_can_update__
+## `__fs_can_update__`
 
 ```python
 def __fs_can_update__(self):
@@ -354,7 +354,7 @@ item can be updated.  Simply raise an exception
 when there is a problem or return False.  By default `__fs_can_update__`
 uses the result from `__fs_can_access__` unless overridden.
 
-## __fs_can_access__
+## `__fs_can_access__`
 
 ```python
 def __fs_can_access__(self):
@@ -384,7 +384,7 @@ def __fs_private_field__(self, field_name):
     return False
 ```
 
-## __fs_update_fields__
+## `__fs_update_fields__`
 
 List of model fields to be read from a form or JSON when updating an object.  Normally
 admin fields such as login_counts or security fields are excluded.  Do not put foreign keys or primary
@@ -394,7 +394,7 @@ keys here.  By default, when `__fs_update_fields__` is empty all Model fields ca
 __fs_update_fields__ = []
 ```
 
-## __fs_update_properties__
+## `__fs_update_properties__`
 
 When returning a success result from a put or post update, a dict
 composed of the property values from the `__fs_update_properties__` list is returned
@@ -422,7 +422,7 @@ class ExampleModel(db.Model, FlaskSerializeMixin):
 This can be used to communicate from the model on the server to the JavaScript code
 interesting things from updates
 
-## __fs_create_fields__
+## `__fs_create_fields__`
 
 List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
 the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
@@ -519,7 +519,7 @@ ascending use this example:
 __fs_order_by_field__ = 'id'
 ```
 
-## Filtering query results using __fs_can_access__ and user.
+## Filtering query results using `__fs_can_access__` and user.
 
 The `fs_query_by_access` method can be used to filter a SQLAlchemy result set so that
 the `user` property and `__fs_can_access__` hook method are used to restrict to allowable items.
@@ -597,16 +597,18 @@ class Model(db.model, FlaskSerializeMixin):
 
 ## Conversion types when writing to database during update and create
 
-Add or replace to db conversion methods by using a list of dicts that specify conversions for SQLAlchemy columns.
+Add or replace to db conversion methods by using a dictionary that specifies conversions for SQLAlchemy columns.
 
-Default is:
+- str(type): is the key to the dictionary for a python object type
+- the value is a lambda or method to provide the conversion to a database acceptable value.
+
+Example:
 
 ```python
-__fs_convert_types__ = [{'type': bool, 'method': lambda v: 'y' if v else 'n'}]
+    __fs_convert_types__ = {
+        str(bool): lambda v: (type(v) == bool and v) or str(v).lower() == "true"
+    }
 ```
-
-- type: a python object type
-- method: a lambda or method to provide the conversion to a database acceptable value.
 
 First the correct conversion will be attempted to be determined from the type of the updated or
 new field value.  Then, an introspection from the destination column type will be used to get the
@@ -645,13 +647,13 @@ Method Operation                                                                
 ====== ================================================================================================== ============================
 GET    returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
 GET    returns all items when `item_id` is None.                                                          \[{item1},{item2},...\]
-PUT    updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    {message:message,item:{model_fields,...},properties:{__fs_update_properties__}}
+PUT    updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    {message:message,item:{model_fields,...},properties:{`__fs_update_properties__`}}
 before updating.  Returns new item as {item}
 DELETE removes the item with primary key of `item_id` if self.__fs_can_delete__ does not throw an error.  {property1:value1,property2:value2,...}
 Returns the item removed.  Calls `__fs_can_delete__` before delete.
 POST   creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...}
 when `item_id` is None. Calls the model `__fs_verify__` method before creating.
-POST   updates an item from form data using `item_id`.                                                    {message:message,item:{model_fields,...},properties:{__fs_update_properties__}}
+POST   updates an item from form data using `item_id`.                                                    {message:message,item:{model_fields,...},properties:{`__fs_update_properties__`}}
 Calls the model ` __fs_verify__` method before updating.
 ====== ================================================================================================== ============================
 
@@ -684,7 +686,7 @@ def get_setting(item_id):
     return item.fs_as_json()
 ```
 
-## __fs_after_commit__(self, create=False)
+## `__fs_after_commit__(self, create=False)`
 
 
 ```python
@@ -696,7 +698,7 @@ you do what you like.  `self` is the updated or created (create==True) item.
 
 NOTE: not called after a `DELETE`
 
-## __fs_before_update__(cls, data_dict)
+## `__fs_before_update__(cls, data_dict)`
 
 - data_dict: a dictionary of new data to apply to the item
 - return: the new `data_dict` to use when updating
@@ -769,7 +771,7 @@ def score(course):
     return Score.fs_json_first(class_name=course)
 ```
 
-## __fs_previous_field_value__
+## `__fs_previous_field_value__`
 
 A dictionary of the previous field values before an update is applied from a dict, form or json update operation. Helpful
 in the `__fs_verify__` method to see if field values are to be changed.
@@ -935,24 +937,24 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
-- 2.0.4 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.
+- 2.1.0 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.  NOTE: Changes `__fs_convert_types__` to a `dict`.
 - 2.0.3 - Allow more use of model column variables instead of "quoted" field names.  Fix missing import for FlaskSerialize.
 - 2.0.2 - Fix table formatting.
 - 2.0.1 - Try to get properties and methods to use more appropriate names.
-- 1.5.2 - Test with flask 2.0.  Add __fs_after_commit__ method to allow post create/update actions.  Improve documentation.
+- 1.5.2 - Test with flask 2.0.  Add `__fs_after_commit__` method to allow post create/update actions.  Improve documentation.
 - 1.5.1 - Fix TypeError: unsupported operand type(s) for +=: 'ImmutableColumnCollection' and 'list' with newer versions of SQLAlchemy
-- 1.5.0 - Return item from POST/PUT updates. Allow __fs_create_fields__ and __fs_update_fields__ to be specified using the column fields.  None values serialize as null/None.  Restore previous __fs_update_properties__ behaviour.  By default updates/creates using all fields. Exclude primary key from create and update.
-- 1.4.2 - by default return all props with __fs_update_properties__
+- 1.5.0 - Return item from POST/PUT updates. Allow `__fs_create_fields__` and `__fs_update_fields__` to be specified using the column fields.  None values serialize as null/None.  Restore previous `__fs_update_properties__` behaviour.  By default, updates/creates using all fields. Exclude primary key from create and update.
+- 1.4.2 - by default return all props with `__fs_update_properties__`
 - 1.4.1 - Add better exception message when `db` mixin property not set.  Add `FlaskSerialize` factory method.
-- 1.4.0 - Add __fs_private_field__ method.
+- 1.4.0 - Add `__fs_private_field__` method.
 - 1.3.1 - Fix incorrect method signatures.  Add fs_query_by_access method.
-- 1.3.0 - Add __fs_can_update__ and __fs_can_access__ methods for controlling update and access.
+- 1.3.0 - Add `__fs_can_update__` and `__fs_can_access__` methods for controlling update and access.
 - 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
 - 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.
 - 1.1.9 - Allow FlaskSerializeMixin to be converted when a property value.
 - 1.1.8 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.
-- 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add __fs_before_update__ hook.
-- 1.1.5 - Add __fs_previous_field_value__ array that is set during update.  Allows comparing new and previous values during  __fs_verify__.
+- 1.1.6 - Make sure all route returns use jsonify as required for older Flask versions.  Add `__fs_before_update__` hook.
+- 1.1.5 - Add `__fs_previous_field_value__` array that is set during update.  Allows comparing new and previous values during  `__fs_verify__`.
 - 1.1.4 - Fix doco typos and JavaScript examples.  Add form_page method.  Improve test and example apps.  Remove Python 2, 3.4 testing and support.
 - 1.1.3 - Fix duplicate db writes.  Return item on delete.  Remove obsolete code structures.  Do not update with non-existent fields.
 - 1.1.2 - Add 400 http status code for errors, remove error dict.  Improve documentation.

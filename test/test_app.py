@@ -410,14 +410,10 @@ class TestAll(TestBase):
         float_value_to_convert = 23.4
         int_value_to_convert = 45
         convert_multiple = 2
-        # old_convert_type = Setting.__fs_convert_types__
-        # Setting.__fs_convert_types__ = [{'type': int, 'method': lambda n: int(n) * 2},
-        #                          {'type': float, 'method': lambda n: float(n) * 2}]
         rv = client.put(
             "/setting_update/{}".format(item.id),
             json=dict(number=int_value_to_convert, floaty=float_value_to_convert),
         )
-        # Setting.__fs_convert_types__ = old_convert_type
         assert rv.status_code == 200
         assert rv.data == b"Updated"
         item = Setting.query.filter_by(key=key).first()
