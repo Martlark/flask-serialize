@@ -937,6 +937,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
+- 2.1.1 - Improve sqlite JSON handling
 - 2.1.0 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.  NOTE: Changes `__fs_convert_types__` to a `dict`.
 - 2.0.3 - Allow more use of model column variables instead of "quoted" field names.  Fix missing import for FlaskSerialize.
 - 2.0.2 - Fix table formatting.

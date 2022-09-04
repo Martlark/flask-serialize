@@ -1,0 +1,11 @@
+# engines for connecting
+# postgres
+psycopg2==2.9.2
+# mssql
+pyodbc
+# mysql
+PyMySQL
+cryptography
+# dynamo db
+boto3
+

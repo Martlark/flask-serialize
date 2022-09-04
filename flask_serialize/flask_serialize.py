@@ -58,7 +58,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __fs_version__ = "2.1.0"
+    __fs_version__ = "2.1.1"
 
     @staticmethod
     def __fs_json_converter__(value):
@@ -341,23 +341,24 @@ class FlaskSerializeMixin:
         return value
 
     @staticmethod
-    def __fs_sqlite_to_str_json_converter(value):
+    def __fs_sqlite_to_dict_json_converter(value):
         """
         convert a sqlite json string from a type that can be json
-        to a string. if already a string then leave be
+        to a dict. if a string do loads
 
         :param value: string to convert
         :return: decoded string
         """
         if value in ["", None]:
-            return "{}"
+            return {}
 
         if type(value) == str:
-            return value
+            return json.loads(value)
 
         if type(value) in FlaskSerializeMixin.__fs_json_types:
-            value = json.dumps(value)
-        return value
+            return value
+
+        return {"value": str(value)}
 
     @staticmethod
     def __fs_sqlite_to_date_converter(value):
@@ -418,7 +419,7 @@ class FlaskSerializeMixin:
                 ] = self.__fs_sqlite_to_date_converter
                 self.__fs_convert_types__[
                     str(dict)
-                ] = self.__fs_sqlite_to_str_json_converter
+                ] = self.__fs_sqlite_to_dict_json_converter
                 props.converters["JSON"] = self.__fs_sqlite_from_str_json_converter
 
             for o, v in self.__fs_convert_types_original__.items():
