@@ -50,6 +50,7 @@ from the db and easy to use write back of models using PUT and POST.
 ```python
 # example database model
 from flask_serialize import FlaskSerialize
+from datetime import datetime
 
 # required to set class var db for writing to a database
 from app import db
@@ -642,20 +643,14 @@ Put, get, delete, post and get-all magic method handler.
 - `user`: user to user as query filter.
 - `prop_filters`: dictionary of key:value pairs to limit results when returning get-all.
 
-====== ================================================================================================== ============================
-Method Operation                                                                                          Response
-====== ================================================================================================== ============================
-GET    returns one item when `item_id` is a primary key.                                                  {property1:value1,property2:value2,...}
-GET    returns all items when `item_id` is None.                                                          \[{item1},{item2},...\]
-PUT    updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    {message:message,item:{model_fields,...},properties:{`__fs_update_properties__`}}
-before updating.  Returns new item as {item}
-DELETE removes the item with primary key of `item_id` if self.__fs_can_delete__ does not throw an error.  {property1:value1,property2:value2,...}
-Returns the item removed.  Calls `__fs_can_delete__` before delete.
-POST   creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...}
-when `item_id` is None. Calls the model `__fs_verify__` method before creating.
-POST   updates an item from form data using `item_id`.                                                    {message:message,item:{model_fields,...},properties:{`__fs_update_properties__`}}
-Calls the model ` __fs_verify__` method before updating.
-====== ================================================================================================== ============================
+| Method Operation | item_id     | Response                                                                                                                                                                                                                                                                                                 |
+|------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GET              | primary key | returns one item when `item_id` is a primary key.  {property1:value1,property2:value2,...}                                                                                                                                                                                                               |
+| GET              | None        | returns all items when `item_id` is None. [{item1},{item2},...]                                                                                                                                                                                                                                          |
+| PUT              | primary key | updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    `{message:message,item:{model_fields,...}`, properties:{`__fs_update_properties__`}} before updating.  Returns new item as {item}                                                                       |
+| DELETE           | primary key | removes the item with primary key of `item_id` if self.__fs_can_delete__ does not throw an error.  `{property1:value1,property2:value2,...}`                                                                                         Returns the item removed.  Calls `__fs_can_delete__` before delete. |
+| POST             | None        | creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...} When `item_id` is None. Calls the model `__fs_verify__` method before creating.                                                                               |
+| POST             | primary key | updates an item from form data using `item_id`. Calls the model ` __fs_verify__` method before updating.                                                                                                                                                                                                 |
 
 On error returns a response of 'error message' with http status code of 400.
 
@@ -851,18 +846,16 @@ Prerequisites.
 
 Setup the class properties to use your form items.
 
-============================= =============================================================================================================================
-Property                      Usage
-============================= =============================================================================================================================
-form_page_form                **Required**. WTForm Class name
-form_page_route_create        **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)
-form_page_route_update        **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)
-form_page_template            **Required**. Location of the template file to allow edit/add
-form_page_update_format       Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
-form_page_create_format       Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash.
-form_page_update_title_format Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.
-form_page_create_title_format Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.
-============================= =============================================================================================================================
+| Property                      | Usage                                                                                                                                                  |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| form_page_form                | **Required**. WTForm Class name                                                                                                                        |
+| form_page_route_create        | **Required**. Name of the method to redirect after create, uses: url_for(cls.form_route_create, item_id=id)                                            |
+| form_page_route_update        | **Required**. Name of the method to redirect after updating, uses: url_for(cls.form_route_update, item_id=id)                                          |
+| form_page_template            | **Required**. Location of the template file to allow edit/add                                                                                          |
+| form_page_update_format       | Format string to format flash message after update. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash. |
+| form_page_create_format       | Format string to format flash message after create. `item` (the model instance) is passed as the only parameter.  Set to '' or None to suppress flash. |
+| form_page_update_title_format | Format string to format title template value when editing. `item` (the model instance) is passed as the only parameter.                                |
+| form_page_create_title_format | Format string to format title template value when creating. `cls` (the model class) is passed as the only parameter.                                   |
 
 The routes must use item_id as the parameter for editing. Use no parameter when creating.
 
@@ -937,6 +930,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
+- 2.1.2 - Fix readme table format
 - 2.1.1 - Improve sqlite JSON handling
 - 2.1.0 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.  NOTE: Changes `__fs_convert_types__` to a `dict`.
 - 2.0.3 - Allow more use of model column variables instead of "quoted" field names.  Fix missing import for FlaskSerialize.

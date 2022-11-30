@@ -38,8 +38,8 @@ class TestBase(flask_unittest.AppClientTestCase):
         :return:
         """
         with app.app_context():
-            db.drop_all(app=app)
-            db.create_all(app=app)
+            db.drop_all()
+            db.create_all()
 
     def create_app(self):
         app.config["TESTING"] = True
@@ -49,7 +49,6 @@ class TestBase(flask_unittest.AppClientTestCase):
         yield app
 
     def tearDown(self, app, client):
-        db.drop_all(app=app)
         db.session.execute(text("drop table if exists test_table"))
         db.session.remove()
 
@@ -711,28 +710,29 @@ class TestAll(TestBase):
     def test_simple_model__fs_update_fields__(self, app, client):
         value = random_string()
         # add
-        item = SimpleModel(value=value)
-        db.session.add(item)
-        db.session.commit()
-        item = SimpleModel.query.filter_by(value=value).first_or_404()
-        # form
-        value = random_string()
-        prop = random_string()
-        rv = client.post(
-            "/simple_edit/{}".format(item.id), data=dict(value=value, prop=prop)
-        )
-        assert 200 == rv.status_code, rv.data
-        assert rv.json["item"]["value"] == value, rv.data
-        assert b"Updated" in rv.data, rv.data
-        # json
-        value = random_string()
-        rv = client.put(
-            "/simple_edit/{}".format(item.id), json=dict(value=value, id="dskdsf")
-        )
-        assert 200 == rv.status_code, rv.data
-        assert rv.json["item"]["value"] == value, rv.data
-        assert rv.json["item"]["prop"] == "prop:" + value, rv.data
-        assert b"Updated" in rv.data, rv.data
+        with app.app_context():
+            item = SimpleModel(value=value)
+            db.session.add(item)
+            db.session.commit()
+            item = SimpleModel.query.filter_by(value=value).first_or_404()
+            # form
+            value = random_string()
+            prop = random_string()
+            rv = client.post(
+                "/simple_edit/{}".format(item.id), data=dict(value=value, prop=prop)
+            )
+            assert 200 == rv.status_code, rv.data
+            assert rv.json["item"]["value"] == value, rv.data
+            assert b"Updated" in rv.data, rv.data
+            # json
+            value = random_string()
+            rv = client.put(
+                "/simple_edit/{}".format(item.id), json=dict(value=value, id="dskdsf")
+            )
+            assert 200 == rv.status_code, rv.data
+            assert rv.json["item"]["value"] == value, rv.data
+            assert rv.json["item"]["prop"] == "prop:" + value, rv.data
+            assert b"Updated" in rv.data, rv.data
 
     def test_override_datetime_conversion(self, app, client):
         key = random_string()
@@ -754,64 +754,69 @@ class TestAll(TestBase):
         setting_type = random_string()
         # test add setting
         Setting.__model_props = {}
-        item = Setting(setting_type=setting_type, key=key, value=test_value)
-        db.session.add(item)
-        db.session.commit()
-        item = Setting.query.get_or_404(item.id)
-        # get by id
-        rv = client.get("/setting_get_json/{}".format(item.id))
-        assert rv.json["value"] == test_value
-        assert rv.json["key"] == key
-        assert rv.json["setting_type"] == setting_type
-        rv = client.get("/setting_get_json/{}".format(item.id + 100))
-        assert rv.status_code == 200
-        assert rv.json == {}
-        # get first
-        rv = client.get("/setting_fs_json_first/{}".format(item.key))
-        assert rv.json["value"] == test_value
-        assert rv.json["key"] == key
-        assert rv.json["setting_type"] == setting_type
-        assert (
-            client.get("/setting_fs_json_first/{}".format(random_string())).json == {}
-        )
+        with app.app_context():
+            item = Setting(setting_type=setting_type, key=key, value=test_value)
+            db.session.add(item)
+            db.session.commit()
+            item = Setting.query.get_or_404(item.id)
+            # get by id
+            rv = client.get("/setting_get_json/{}".format(item.id))
+            assert rv.json["value"] == test_value
+            assert rv.json["key"] == key
+            assert rv.json["setting_type"] == setting_type
+            rv = client.get("/setting_get_json/{}".format(item.id + 100))
+            assert rv.status_code == 200
+            assert rv.json == {}
+            # get first
+            rv = client.get("/setting_fs_json_first/{}".format(item.key))
+            assert rv.json["value"] == test_value
+            assert rv.json["key"] == key
+            assert rv.json["setting_type"] == setting_type
+            assert (
+                client.get("/setting_fs_json_first/{}".format(random_string())).json
+                == {}
+            )
 
     def test_get_0_is_not_null(self, app, client):
         key = random_string()
-        item = Setting(id=0, setting_type="hello", value=random_string(), key=key)
-        db.session.add(item)
-        db.session.commit()
-        # should get a list
-        rv = client.get("/setting_get_all")
-        assert rv.status_code == 200
-        assert len(rv.json) == 1
-        assert rv.json[0]["key"] == key
-        # should get one item not a list
-        rv = client.get("/setting_get/0")
-        assert rv.status_code == 200
-        assert rv.json["key"] == key
+        with app.app_context():
+            item = Setting(id=0, setting_type="hello", value=random_string(), key=key)
+            db.session.add(item)
+            db.session.commit()
+            # should get a list
+            rv = client.get("/setting_get_all")
+            assert rv.status_code == 200
+            assert len(rv.json) == 1
+            assert rv.json[0]["key"] == key
+            # should get one item not a list
+            rv = client.get("/setting_get/0")
+            assert rv.status_code == 200
+            assert rv.json["key"] == key
 
     def test_timestamp_is_updated_and_can_be_overridden(self, app, client):
         key = random_string()
-        item = Setting(setting_type="hello", value=random_string(), key=key)
-        db.session.add(item)
-        db.session.commit()
-        new_value = random_string()
-        item = Setting.query.get_or_404(item.id)
-        sub_item = item.add_sub(new_value)
-        sub_item_id = sub_item.id
-        updated_when_created = sub_item.sub_updated
-        # update using put
-        new_value = random_string()
-        assert (
-            200
-            == client.put(
-                "/sub_setting_put/{}".format(sub_item_id), json=dict(flong=new_value)
-            ).status_code
-        )
-        updated_item = SubSetting.query.get_or_404(sub_item_id)
-        assert updated_item.flong == new_value
-        # test custom update works and that __fs_timestamp_fields__ works
-        assert updated_when_created > updated_item.sub_updated
+        with app.app_context():
+            item = Setting(setting_type="hello", value=random_string(), key=key)
+            db.session.add(item)
+            db.session.commit()
+            new_value = random_string()
+            item = Setting.query.get_or_404(item.id)
+            sub_item = item.add_sub(new_value)
+            sub_item_id = sub_item.id
+            updated_when_created = sub_item.sub_updated
+            # update using put
+            new_value = random_string()
+            assert (
+                200
+                == client.put(
+                    "/sub_setting_put/{}".format(sub_item_id),
+                    json=dict(flong=new_value),
+                ).status_code
+            )
+            updated_item = SubSetting.query.get_or_404(sub_item_id)
+            assert updated_item.flong == new_value
+            # test custom update works and that __fs_timestamp_fields__ works
+            assert updated_when_created > updated_item.sub_updated
 
     def test_user(self, app, client):
         test_value = random_string()
