@@ -1,7 +1,5 @@
 # flask-serialize
 
-|PyPI Version|
-
 # DB Model JSON serialization with PUT, POST write for Flask applications using SQLAlchemy
 
 ## Installation
@@ -520,6 +518,16 @@ ascending use this example:
 __fs_order_by_field__ = 'id'
 ```
 
+A `lambda` or `method` can be used as the `__fs_order_by_field__`, in which case custom sorting can be achieved. The
+passed value to the `lambda` is a dictionary of the field and properties of a result row.
+
+Example:
+
+```python
+__fs_order_by_field__ = lambda r: -int(r["value"])
+```
+
+
 ## Filtering query results using `__fs_can_access__` and user.
 
 The `fs_query_by_access` method can be used to filter a SQLAlchemy result set so that
@@ -930,6 +938,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
+- 2.1.3 - Allow sorting by lambda
 - 2.1.2 - Fix readme table format
 - 2.1.1 - Improve sqlite JSON handling
 - 2.1.0 - Convert readme to markdown.  Add support for JSON columns.  Withdraw Python 3.6 Support. Use unittest instead of pytest.  NOTE: Changes `__fs_convert_types__` to a `dict`.
@@ -962,6 +971,3 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 ## Licensing
 
 - Apache 2.0
-
-.. |PyPI Version| image:: https://img.shields.io/pypi/v/flask-serialize.svg
-:target: https://pypi.python.org/pypi/flask-serialize

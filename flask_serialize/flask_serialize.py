@@ -207,10 +207,16 @@ class FlaskSerializeMixin:
 
         # ascending
         if cls.__fs_order_by_field__:
-            items = sorted(
-                items,
-                key=lambda i: i[cls._fs_get_field_name(cls.__fs_order_by_field__)],
-            )
+            if callable(cls.__fs_order_by_field__):
+                items = sorted(
+                    items,
+                    key=cls.__fs_order_by_field__,
+                )
+            else:
+                items = sorted(
+                    items,
+                    key=lambda i: i[cls._fs_get_field_name(cls.__fs_order_by_field__)],
+                )
 
             # descending
         elif cls.__fs_order_by_field_desc__:
