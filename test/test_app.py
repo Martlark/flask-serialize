@@ -54,6 +54,10 @@ class TestBase(flask_unittest.AppClientTestCase):
 
 
 class TestAll(TestBase):
+    def tearDown(self, app, client):
+        Setting.__fs_order_by_field__ = "value"
+        Setting.__fs_order_by_field_desc__ = None
+
     def add_setting(self, client, key=random_string(), value="test-value", number=0):
         rv = client.post(
             "/setting_add",
@@ -93,6 +97,15 @@ class TestAll(TestBase):
         sorted_list = sorted(json_settings, key=lambda i: i["value"], reverse=True)
         for z in range(count):
             assert json_settings[z]["value"] == sorted_list[z]["value"]
+        # method
+        Setting.__fs_order_by_field__ = lambda r: -int(r["value"])
+        Setting.__fs_order_by_field_desc__ = None
+        rv = client.get("/setting_get_all")
+        json_settings = rv.json
+        sorted_list = sorted(json_settings, key=lambda i: -int(i["value"]))
+        for z in range(count):
+            assert json_settings[z]["value"] == sorted_list[z]["value"]
+        Setting.__fs_order_by_field__ = "value"
 
     def test_get_filter(self, app, client):
         key_1 = random_string()
