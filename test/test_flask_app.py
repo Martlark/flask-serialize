@@ -97,6 +97,7 @@ def route_sub_setting_fs_get_delete_put_post(item_id=None, user="fake"):
     return SubSetting.fs_get_delete_put_post(item_id, user)
 
 
+@app.get("/simple")
 @app.route("/simple_add", methods=["POST"])
 @app.route("/simple_edit/<int:item_id>", methods=["PUT", "POST"])
 def route_simple_fs_get_delete_put_post(item_id=None, user=None):
@@ -509,6 +510,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 class SimpleModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default="")
+    __fs_filter_by__ = False
 
     @property
     def prop(self):

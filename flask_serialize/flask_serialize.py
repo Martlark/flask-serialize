@@ -7,6 +7,18 @@ from flask import request, jsonify, abort, current_app, Response
 from permissive_dict import PermissiveDict
 
 
+TRUTHY_VALUES = ("y", "Y", "yes", "Yes", "YES", True, "true", "True", "TRUE", 1, "1")
+
+
+def is_truthy(value) -> bool:
+    """
+    return True if value seems to be a true value.
+    :param value:
+    :return: True or False
+    """
+    return value in TRUTHY_VALUES
+
+
 class FlaskSerializeNoDb(Exception):
     def __init__(self):
         super().__init__('FlaskSerializeMixin property "db" is not set')
@@ -51,6 +63,8 @@ class FlaskSerializeMixin:
     __fs_user_field__ = "user"
     # properties or fields to return when updating using get or post
     __fs_update_properties__ = []
+    # allow auto request filter_by on fs_get_delete_put_post
+    __fs_filter_by__ = True
     # db is required to be set for updating/deletion functions
     db = None
     # cache model properties
@@ -58,7 +72,7 @@ class FlaskSerializeMixin:
     # previous values of an instance before update attempted
     __fs_previous_field_value__ = {}
     # current version
-    __fs_version__ = "2.1.1"
+    __fs_version__ = "2.2.0"
 
     @staticmethod
     def __fs_json_converter__(value):
@@ -414,7 +428,10 @@ class FlaskSerializeMixin:
             }
 
             # SQL columns
-            props.__exclude_fields = ["fs_as_dict", "fs_as_json",] + [
+            props.__exclude_fields = [
+                "fs_as_dict",
+                "fs_as_json",
+            ] + [
                 self._fs_get_field_name(f) for f in self.__fs_exclude_serialize_fields__
             ]
             field_list = list(self.__table__.columns)
@@ -513,8 +530,10 @@ class FlaskSerializeMixin:
                 try:
                     d[c.name] = c.converter(v)
                 except Exception as e:
-                    d[c.name] = 'Error:"{}". Failed to convert [{}] type:{}'.format(
-                        e, c.name, c.c_type
+                    d[
+                        c.name
+                    ] = 'Error:"{}". Failed to convert [{}] type:{} value:{}'.format(
+                        e, c.name, c.c_type, v
                     )
                     current_app.logger.warning(d[c.name])
         return d
@@ -804,13 +823,7 @@ class FlaskSerializeMixin:
             if not item.__fs_can_access__():
                 return Response("Access forbidden", 403)
         elif request.method == "GET":
-            # no item id get a list of items
-            if user:
-                kwargs = {cls.__fs_user_field__: user}
-                result = cls.query.filter_by(**kwargs)
-            else:
-                result = cls.query.all()
-            return cls.fs_json_list(result, prop_filters=prop_filters)
+            return cls.__get_all(prop_filters, user)
 
         try:
             if not item:
@@ -848,6 +861,60 @@ class FlaskSerializeMixin:
 
         except Exception as e:
             return str(e), cls.__fs_http_error_code
+
+    @classmethod
+    def __get_all(cls, prop_filters, user):
+        """
+        get all the items as per arg filters and user
+
+        :param prop_filters: after query prop filters
+        :param user: user to filter by
+        :return:
+        """
+
+        def convert_value(field_name, value):
+            """
+            convert arg to db value
+
+            :param field_name:
+            :param value:
+            :return:
+            """
+            column_attr = getattr(cls, field_name)
+            if not column_attr:
+                return value
+            try:
+                if column_attr.type.python_type == int:
+                    return int(value)
+                if column_attr.type.python_type == float:
+                    return float(value)
+                if column_attr.type.python_type == bool:
+                    return is_truthy(value)
+            except:
+                pass
+            return value
+
+        kwargs = dict()
+
+        if cls.__fs_filter_by__:
+            kwargs = dict(request.args)
+
+        try:
+            # don't allow filtering by excluded fields
+            for field_name, value in kwargs.items():
+                if field_name in cls.__fs_exclude_serialize_fields__:
+                    del kwargs[field_name]
+                else:
+                    kwargs[field_name] = convert_value(field_name, value)
+
+            if user:
+                kwargs[cls.__fs_user_field__] = user
+
+            result = cls.query.filter_by(**kwargs)
+        except Exception as e:
+            return str(e), cls.__fs_http_error_code
+
+        return cls.fs_json_list(result, prop_filters=prop_filters)
 
     @classmethod
     def fs_json_first(cls, **kwargs):

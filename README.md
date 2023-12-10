@@ -155,7 +155,7 @@ def route_setting_all(item_id=None):
     return Setting.fs_get_delete_put_post(item_id)
 ```
 
-Updating from a json object in the flask put request
+Updating from a JSON object in the Flask put request
 
 JQuery example:
 
@@ -490,6 +490,26 @@ List of model field names to not serialize when returning as json.
 ```python
 __fs_exclude_json_serialize_fields__ = []
 ```
+
+## Built in query_by using request arg on GET
+
+`fs_get_delete_put_post` by default supports automatic passing of GET request args to the query method using
+a `filter_by` clause.  Example using a Flask route that be default returns all messages:
+
+
+```python
+    @route('/message/', methods=['GET'])
+    def route_message():
+        return Message.fs_get_by_user_or_404()
+```
+
+Call the endpoint using URL like:
+
+  /message/?name=hello&lines=12
+
+Will return any message records with the name of 'hello' and with 12 lines.
+
+This feature can be disabled by using `__fs_filter_by = False`.
 
 ## Filtering json list results
 
@@ -938,6 +958,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
+- 2.2.0 - Allow arg parameters to be used in `fs_get_delete_put_post` 'GET' as query filters
 - 2.1.3 - Allow sorting by lambda
 - 2.1.2 - Fix readme table format
 - 2.1.1 - Improve sqlite JSON handling
@@ -953,7 +974,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 - 1.4.0 - Add `__fs_private_field__` method.
 - 1.3.1 - Fix incorrect method signatures.  Add fs_query_by_access method.
 - 1.3.0 - Add `__fs_can_update__` and `__fs_can_access__` methods for controlling update and access.
-- 1.2.1 - Add support to change the user field name for get_put_post_delete user= parameter.
+- 1.2.1 - Add support to change the user field name for fs_get_delete_put_post user= parameter.
 - 1.2.0 - Add support for decimal, numeric and clob.  Treat all VARCHARS the same.  Convert non-list relationship.
 - 1.1.9 - Allow FlaskSerializeMixin to be converted when a property value.
 - 1.1.8 - Move form_page to separate MixIn.  Slight refactoring.  Add support for complex type to db.

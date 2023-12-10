@@ -2,6 +2,7 @@ import json
 import random
 import string
 import time
+import unittest
 from http import HTTPStatus
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,7 @@ from sqlalchemy.exc import OperationalError
 
 import flask_unittest
 
-
+from flask_serialize import FlaskSerializeMixin
 from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
 
 
@@ -143,6 +144,56 @@ class TestAll(TestBase):
         fs_dict_list = Setting.fs_dict_list(result)
         assert len(fs_dict_list) == 1
         assert fs_dict_list[0]["key"] == key
+
+    def test_get_filter_keywords(self, app, client):
+        # test add
+        key = random_string()
+        item = self.add_setting(client, key=key, value="123", number=9)
+        item = self.add_setting(client, key=key, value="456")
+
+        # one value
+        rv = client.get("/setting_get_all?value=123")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 1
+        assert rv.json[0]["value"] == "123"
+        assert rv.json[0]["number"] == 18, rv.json  # number is doubled
+
+        # two values
+        rv = client.get(f"/setting_get_all?value=123&key={key}")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 1
+        assert rv.json[0]["value"] == "123"
+
+        # no match
+        rv = client.get("/setting_get_all?value=nothing")
+        assert rv.status_code == HTTPStatus.OK
+        assert len(rv.json) == 0
+
+        # invalid field_name
+        rv = client.get("/setting_get_all?floogle=nothing")
+        assert rv.status_code == HTTPStatus.BAD_REQUEST
+
+        # type conversion
+        rv = client.get("/setting_get_all?number=18")
+        assert rv.status_code == HTTPStatus.OK
+        assert len(rv.json) == 1, rv.json
+
+    def test_filter_by_false(self, app, client):
+        # disable auto query
+        rv = client.post("/simple_add", data=dict(value=123))
+        assert rv.status_code == HTTPStatus.OK
+        rv = client.post("/simple_add", data=dict(value=456))
+        assert rv.status_code == HTTPStatus.OK
+        rv = client.post("/simple_add", data=dict(value="hello"))
+        assert rv.status_code == HTTPStatus.OK
+
+        rv = client.get("/simple")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 3, len(rv.json)
+
+        rv = client.get("/simple?value=123")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 3, len(rv.json)
 
     def test_get_user(self, app, client):
         key = random_string()
@@ -837,9 +888,17 @@ class TestAll(TestBase):
         # test add user
         # get by id
         rv = client.post("/user", data={"name": user_name})
-        assert rv.json["name"] == user_name
+        assert rv.json["name"] == user_name, rv.json
         user_id = rv.json["id"]
         # add data
         rv = client.post(f"/user_add_data/{user_id}", data={"data": test_value})
         assert rv.json["name"] == user_name
         assert test_value in [item.get("value") for item in rv.json["data_items"]]
+
+
+class TestVersion(unittest.TestCase):
+    def test_version(self):
+        version_file = "../VERSION"
+        version = open(version_file).read().strip()
+
+        self.assertEqual(FlaskSerializeMixin.__fs_version__, version)
