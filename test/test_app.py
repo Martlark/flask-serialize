@@ -394,6 +394,17 @@ class TestAll(TestBase):
         rv = client.delete("/setting_delete/{}".format(item.id))
         assert rv.status_code == 400
         assert rv.data == b"Deletion not allowed.  Magic value!"
+        key = random_string()
+        value = "5678"
+        rv = client.post(
+            "/setting_add", data=dict(setting_type="test", key=key, value=value)
+        )
+        assert rv.status_code == 302
+        item = Setting.query.filter_by(key=key).first()
+        assert item
+        assert item.value == value
+        rv = client.delete("/setting_delete/{}".format(item.id))
+        assert rv.status_code == HTTPStatus.OK
 
     def test_column_conversion(self, app, client):
         # create
