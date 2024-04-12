@@ -550,6 +550,56 @@ class TestAll(TestBase):
         item = Setting.query.get_or_404(item.id)
         assert "n" == item.active
 
+    def test_fs_get_delete_put_post__fs_filter_by__(self, app, client):
+        key_test_value_1 = random_string()
+        # create using post
+        rv = client.post(
+            "/setting_post",
+            data=dict(
+                setting_type="test",
+                key=key_test_value_1,
+                value="test-value_1",
+                number=10,
+            ),
+        )
+        assert rv.status_code == 200
+        key_test_value_2 = random_string()
+        # create using post
+        rv = client.post(
+            "/setting_post",
+            data=dict(
+                setting_type="test",
+                key=key_test_value_2,
+                value="test-value_2",
+                number=10,
+            ),
+        )
+        assert rv.status_code == 200
+
+        items = client.get("/setting_get_all")
+        self.assertEqual(2, len(items.json))
+
+        rv = client.get("/setting_get_all?flog=blog")
+        assert rv.status_code == HTTPStatus.BAD_REQUEST
+
+        items = client.get("/setting_get_all?value=test-value_2")
+        self.assertEqual(1, len(items.json))
+        self.assertEqual(key_test_value_2, items.json[0]["key"])
+
+        items = client.get("/setting_get_all?value=test-value_3")
+        self.assertEqual(0, len(items.json))
+
+        item = client.post("/simple_add", data=dict(value=key_test_value_1))
+        assert item.status_code == HTTPStatus.OK
+        item = client.get("/simple")
+
+        assert item.status_code == HTTPStatus.OK
+        self.assertEqual(1, len(item.json))
+        # should not apply filter
+        item = client.get("/simple?value=wrong")
+        assert item.status_code == HTTPStatus.OK
+        self.assertEqual(1, len(item.json), item.data)
+
     def test_fs_get_delete_put_post(self, app, client):
         key = random_string()
         # create using post

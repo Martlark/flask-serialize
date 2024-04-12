@@ -896,7 +896,7 @@ class FlaskSerializeMixin:
 
         kwargs = dict()
 
-        if cls.__fs_filter_by__:
+        if cls.__fs_filter_by__ and request.method == "GET":
             kwargs = dict(request.args)
 
         try:

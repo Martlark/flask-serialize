@@ -494,7 +494,7 @@ __fs_exclude_json_serialize_fields__ = []
 ## Built in query_by using request arg on GET
 
 `fs_get_delete_put_post` by default supports automatic passing of GET request args to the query method using
-a `filter_by` clause.  Example using a Flask route that be default returns all messages:
+a `filter_by` clause. Example using a Flask route that be default returns all messages:
 
 
 ```python
