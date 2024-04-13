@@ -2,16 +2,16 @@ import json
 import random
 import string
 import time
+import unittest
 from http import HTTPStatus
 from datetime import datetime
 from pathlib import Path
-from sqlalchemy import text, exc
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 
 import flask_unittest
 
-
-from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
+from flask_serialize import FlaskSerializeMixin
+from test.test_flask_app import db, Setting, SubSetting, SimpleModel, DateTest
 
 
 def random_string(length=20):
@@ -42,6 +42,8 @@ class TestBase(flask_unittest.AppClientTestCase):
             db.create_all()
 
     def create_app(self):
+        from test.test_flask_app import app
+
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "Testing"
         app.config["WTF_CSRF_ENABLED"] = False
@@ -58,7 +60,8 @@ class TestAll(TestBase):
         Setting.__fs_order_by_field__ = "value"
         Setting.__fs_order_by_field_desc__ = None
 
-    def add_setting(self, client, key=random_string(), value="test-value", number=0):
+    @staticmethod
+    def add_setting(client, key=random_string(), value="test-value", number=0):
         rv = client.post(
             "/setting_add",
             data=dict(setting_type="test", key=key, value=value, number=number),
@@ -143,6 +146,56 @@ class TestAll(TestBase):
         fs_dict_list = Setting.fs_dict_list(result)
         assert len(fs_dict_list) == 1
         assert fs_dict_list[0]["key"] == key
+
+    def test_get_filter_keywords(self, app, client):
+        # test add
+        key = random_string()
+        item = self.add_setting(client, key=key, value="123", number=9)
+        item = self.add_setting(client, key=key, value="456")
+
+        # one value
+        rv = client.get("/setting_get_all?value=123")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 1
+        assert rv.json[0]["value"] == "123"
+        assert rv.json[0]["number"] == 18, rv.json  # number is doubled
+
+        # two values
+        rv = client.get(f"/setting_get_all?value=123&key={key}")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 1
+        assert rv.json[0]["value"] == "123"
+
+        # no match
+        rv = client.get("/setting_get_all?value=nothing")
+        assert rv.status_code == HTTPStatus.OK
+        assert len(rv.json) == 0
+
+        # invalid field_name
+        rv = client.get("/setting_get_all?floogle=nothing")
+        assert rv.status_code == HTTPStatus.BAD_REQUEST
+
+        # type conversion
+        rv = client.get("/setting_get_all?number=18")
+        assert rv.status_code == HTTPStatus.OK
+        assert len(rv.json) == 1, rv.json
+
+    def test_filter_by_false(self, app, client):
+        # disable auto query
+        rv = client.post("/simple_add", data=dict(value=123))
+        assert rv.status_code == HTTPStatus.OK
+        rv = client.post("/simple_add", data=dict(value=456))
+        assert rv.status_code == HTTPStatus.OK
+        rv = client.post("/simple_add", data=dict(value="hello"))
+        assert rv.status_code == HTTPStatus.OK
+
+        rv = client.get("/simple")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 3, len(rv.json)
+
+        rv = client.get("/simple?value=123")
+        assert rv.status_code == HTTPStatus.OK, rv.data
+        assert len(rv.json) == 3, len(rv.json)
 
     def test_get_user(self, app, client):
         key = random_string()
@@ -343,6 +396,17 @@ class TestAll(TestBase):
         rv = client.delete("/setting_delete/{}".format(item.id))
         assert rv.status_code == 400
         assert rv.data == b"Deletion not allowed.  Magic value!"
+        key = random_string()
+        value = "5678"
+        rv = client.post(
+            "/setting_add", data=dict(setting_type="test", key=key, value=value)
+        )
+        assert rv.status_code == 302
+        item = Setting.query.filter_by(key=key).first()
+        assert item
+        assert item.value == value
+        rv = client.delete("/setting_delete/{}".format(item.id))
+        assert rv.status_code == HTTPStatus.OK
 
     def test_column_conversion(self, app, client):
         # create
@@ -487,6 +551,56 @@ class TestAll(TestBase):
         assert rv.json["message"] == "Updated"
         item = Setting.query.get_or_404(item.id)
         assert "n" == item.active
+
+    def test_fs_get_delete_put_post__fs_filter_by__(self, app, client):
+        key_test_value_1 = random_string()
+        # create using post
+        rv = client.post(
+            "/setting_post",
+            data=dict(
+                setting_type="test",
+                key=key_test_value_1,
+                value="test-value_1",
+                number=10,
+            ),
+        )
+        assert rv.status_code == 200
+        key_test_value_2 = random_string()
+        # create using post
+        rv = client.post(
+            "/setting_post",
+            data=dict(
+                setting_type="test",
+                key=key_test_value_2,
+                value="test-value_2",
+                number=10,
+            ),
+        )
+        assert rv.status_code == 200
+
+        items = client.get("/setting_get_all")
+        self.assertEqual(2, len(items.json))
+
+        rv = client.get("/setting_get_all?flog=blog")
+        assert rv.status_code == HTTPStatus.BAD_REQUEST
+
+        items = client.get("/setting_get_all?value=test-value_2")
+        self.assertEqual(1, len(items.json))
+        self.assertEqual(key_test_value_2, items.json[0]["key"])
+
+        items = client.get("/setting_get_all?value=test-value_3")
+        self.assertEqual(0, len(items.json))
+
+        item = client.post("/simple_add", data=dict(value=key_test_value_1))
+        assert item.status_code == HTTPStatus.OK
+        item = client.get("/simple")
+
+        assert item.status_code == HTTPStatus.OK
+        self.assertEqual(1, len(item.json))
+        # should not apply filter
+        item = client.get("/simple?value=wrong")
+        assert item.status_code == HTTPStatus.OK
+        self.assertEqual(1, len(item.json), item.data)
 
     def test_fs_get_delete_put_post(self, app, client):
         key = random_string()
@@ -837,9 +951,17 @@ class TestAll(TestBase):
         # test add user
         # get by id
         rv = client.post("/user", data={"name": user_name})
-        assert rv.json["name"] == user_name
+        assert rv.json["name"] == user_name, rv.json
         user_id = rv.json["id"]
         # add data
         rv = client.post(f"/user_add_data/{user_id}", data={"data": test_value})
         assert rv.json["name"] == user_name
         assert test_value in [item.get("value") for item in rv.json["data_items"]]
+
+
+class TestVersion(unittest.TestCase):
+    def test_version(self):
+        version_file = "../VERSION"
+        version = open(version_file).read().strip()
+
+        self.assertEqual(FlaskSerializeMixin.__fs_version__, version)

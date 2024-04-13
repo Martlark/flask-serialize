@@ -23,7 +23,7 @@ from flask_serialize.flask_serialize import (
 )
 from flask_serialize.form_page import FormPageMixin
 
-app = Flask("test_app")
+app: Flask = Flask("test_app")
 app.testing = True
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -97,6 +97,7 @@ def route_sub_setting_fs_get_delete_put_post(item_id=None, user="fake"):
     return SubSetting.fs_get_delete_put_post(item_id, user)
 
 
+@app.get("/simple")
 @app.route("/simple_add", methods=["POST"])
 @app.route("/simple_edit/<int:item_id>", methods=["PUT", "POST"])
 def route_simple_fs_get_delete_put_post(item_id=None, user=None):
@@ -397,9 +398,9 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     # convert types
     __fs_scheduled_date_format__ = "%Y-%m-%d %H:%M:%S"
     __fs_convert_types__ = {
-        str(bool): lambda v: "y"
-        if (type(v) == bool and v) or str(v).lower() == "true"
-        else "n",
+        str(bool): lambda v: (
+            "y" if (type(v) == bool and v) or str(v).lower() == "true" else "n"
+        ),
         str(int): lambda n: int(n) * 2,
         str(datetime): lambda n: datetime.strptime(
             n, Setting.__fs_scheduled_date_format__
@@ -509,6 +510,7 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
 class SimpleModel(fs_mixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     value = db.Column(db.String(30), default="")
+    __fs_filter_by__ = False
 
     @property
     def prop(self):
