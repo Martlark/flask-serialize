@@ -89,28 +89,28 @@ class Setting(fs_mixin, db.Model):
 
 ## Routes setup
 
-Get a single item as json.
+Get a single item as JSON.
 
 ```python
 @app.route('/get_setting/<item_id>', methods=['GET'])
 def get_setting( item_id ):
     return Setting.fs_get_delete_put_post(item_id)
 
-# Returns a Flask response with a json object, example:
+# Returns a Flask response with a JSON object, example:
 ```
 
 ```JavaScript
 {id:1, value: "hello"}
 ```
 
-Put an update to a single item as json.
+Put an update to a single item as JSON.
 
 ```python
 @app.route('/update_setting/<item_id>', methods=['PUT'])
 def update_setting( item_id ):
     return Setting.fs_get_delete_put_post(item_id)
 
-# Returns a Flask response with the result as a json object:
+# Returns a Flask response with the result as a JSON object:
 
 ```
 
@@ -125,21 +125,21 @@ Delete a single item.
 def delete_setting( item_id ):
     return Setting.fs_get_delete_put_post(item_id)
 
-# Returns a Flask response with the result and item deleted as a json response:
+# Returns a Flask response with the result and item deleted as a JSON response:
 ```
 
 ```JavaScript
 {message: "success message", item: {"id":5, name: "gone"}}
 ```
 
-Get all items as a json list.
+Get all items as a JSON list.
 
 ```python
 @app.route('/get_setting_all', methods=['GET'])
 def get_setting_all():
     return Setting.fs_get_delete_put_post()
 
-# Returns a Flask response with a list of json objects, example:
+# Returns a Flask response with a list of JSON objects, example:
 ```
 
 ```JavaScript
@@ -258,12 +258,12 @@ when creating.
 When using any of the convenience methods to update, create or delete an object these properties and
 methods control how flask-serialize handles the operation.
 
-## Updating from a form or json
+## Updating from a form or JSON
 
 ```python
 def fs_request_update_json():
     """
-    Update an item from request json data or PUT params, probably from a PUT or PATCH.
+    Update an item from request JSON data or PUT params, probably from a PUT or PATCH.
     Throws exception if not valid
 
     :return: True if item updated
@@ -286,7 +286,7 @@ Example.  To update a Message object using a GET, call this method with the para
 ```python
 def fs_request_update_json():
     """
-    Update an item from request json data or PUT params, probably from a PUT or PATCH.
+    Update an item from request JSON data or PUT params, probably from a PUT or PATCH.
     Throws exception if not valid
 
     :return: True if item updated
@@ -367,8 +367,9 @@ item can be read or accessed.  Return False to exclude from results.
 
 ## Private fields
 
-Fields can be made private for certain reasons by overriding the `__fs_private_field__` method
-and returning `True` if the field is to be private.
+Fields can be made private by overriding the `__fs_private_field__` method
+and returning `True` if the field is to be private.  These fields will not be returned
+in JSON results.
 
 Private fields will be excluded for any get, put and post methods.
 
@@ -423,7 +424,7 @@ interesting things from updates
 
 ## `__fs_create_fields__`
 
-List of model fields to be read from a form or json when creating an object.  Can be the specified as either 'text' or
+List of model fields to be read from a form or JSON when creating an object.  Can be the specified as either 'text' or
 the field. Do not put primary keys here.  Do not put foreign keys here if using SQLAlchemy child insertion.
 This is usually the same as `__fs_update_fields__`.  When `__fs_create_fields__` is empty all column fields can be inserted.
 
@@ -485,7 +486,7 @@ List of model field names to not serialize at all.
 __fs_exclude_serialize_fields__ = []
 ```
 
-List of model field names to not serialize when returning as json.
+List of model field names to not serialize when returning as JSON.
 
 ```python
 __fs_exclude_json_serialize_fields__ = []
@@ -509,14 +510,14 @@ Call the endpoint using URL like:
 
 Will return any message records with the name of 'hello' and with 12 lines.
 
-This feature can be disabled by using `__fs_filter_by = False`.
+This feature can be disabled by using `__fs_filter_by = False` on the model definition.
 
-## Filtering json list results
+## Filtering JSON list results
 
 Json result lists can be filtered by using the `prop_filters` parameter on either
 the `fs_get_delete_put_post` method or the `fs_json_list` method.
 
-The filter consists of one or more properties in the json result and
+The filter consists of one or more properties in the JSON result and
 the value that it must match.  Filter items will match against the
 first `prop_filter` property to exactly equal the value.
 
@@ -528,7 +529,7 @@ Example to only return dogs:
 result = fs_get_delete_put_post(prop_filters = {'key':'dogs'})
 ```
 
-## Sorting json list results
+## Sorting JSON list results
 
 Json result lists can be sorted by using the `__fs_order_by_field__` or the `__fs_order_by_field_desc__` properties.  The results
 are sorted after the query is converted to JSON.  As such you can use any property from a class to sort. To sort by id
@@ -556,7 +557,7 @@ the `user` property and `__fs_can_access__` hook method are used to restrict to 
 Example:
 
 ```python
-result_list = Setting. fs_query_by_access(user='Andrew', setting_type='test')
+result_list = Setting.fs_query_by_access(user='Andrew', setting_type='test')
 ```
 
 Any keyword can be supplied after `user` to be passed to `filter_by` method of `query`.
@@ -675,9 +676,9 @@ Put, get, delete, post and get-all magic method handler.
 |------------------|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | GET              | primary key | returns one item when `item_id` is a primary key.  {property1:value1,property2:value2,...}                                                                                                                                                                                                               |
 | GET              | None        | returns all items when `item_id` is None. [{item1},{item2},...]                                                                                                                                                                                                                                          |
-| PUT              | primary key | updates item using `item_id` as the id from request json data.  Calls the model `__fs_verify__`    `{message:message,item:{model_fields,...}`, properties:{`__fs_update_properties__`}} before updating.  Returns new item as {item}                                                                       |
+| PUT              | primary key | updates item using `item_id` as the id from request JSON data.  Calls the model `__fs_verify__`    `{message:message,item:{model_fields,...}`, properties:{`__fs_update_properties__`}} before updating.  Returns new item as {item}                                                                       |
 | DELETE           | primary key | removes the item with primary key of `item_id` if self.__fs_can_delete__ does not throw an error.  `{property1:value1,property2:value2,...}`                                                                                         Returns the item removed.  Calls `__fs_can_delete__` before delete. |
-| POST             | None        | creates and returns a Flask response with a new item as json from form body data or JSON body data {property1:value1,property2:value2,...} When `item_id` is None. Calls the model `__fs_verify__` method before creating.                                                                               |
+| POST             | None        | creates and returns a Flask response with a new item as JSON from form body data or JSON body data {property1:value1,property2:value2,...} When `item_id` is None. Calls the model `__fs_verify__` method before creating.                                                                               |
 | POST             | primary key | updates an item from form data using `item_id`. Calls the model ` __fs_verify__` method before updating.                                                                                                                                                                                                 |
 
 On error returns a response of 'error message' with http status code of 400.
@@ -700,7 +701,7 @@ dict_item = item.fs_as_dict()
 
 ## fs_as_json
 
-Convert a db object into a json Flask response using `jsonify`.  Example:
+Convert a db object into a JSON Flask response using `jsonify`.  Example:
 
 ```python
 @app.route('/setting/<int:item_id>')
@@ -709,15 +710,15 @@ def get_setting(item_id):
     return item.fs_as_json()
 ```
 
-## `__fs_after_commit__(self, create=False)`
+## __fs_after_commit__(self, create=False)
 
+Hook to call after any of `fs_update_from_dict`, `fs_request_update_form`, `fs_request_update_json` has been called so that
+you can do what you like.  `self` is the updated or created (create==True) item. Example:
 
 ```python
 def  __fs_after_commit__(self, create=False):
+        logging.info(f'changed! {self}')
 ```
-
-Hook to call after any `fs_update_from_dict`, `fs_request_update_form`, `fs_request_update_json` has been called so that
-you do what you like.  `self` is the updated or created (create==True) item.
 
 NOTE: not called after a `DELETE`
 
@@ -755,7 +756,7 @@ def get_items():
 
 ## fs_json_list(query_result)
 
-Return a flask response in json list format from a sql alchemy query result.
+Return a flask response in JSON list format from a sql alchemy query result.
 
 .. code:: python
 python
@@ -770,7 +771,7 @@ def address_list():
 
 ## fs_json_filter_by(kw_args)
 
-Return a flask list response in json format using a filter_by query.
+Return a flask list response in JSON format using a filter_by query.
 
 Example:
 
@@ -778,12 +779,12 @@ Example:
 @bp.route('/address/list', methods=['GET'])
 @login_required
 def address_list():
-    return Address.filter_by(user=current_user)
+    return Address.fs_json_filter_by(user=current_user)
 ```
 
 ## fs_json_first(kwargs)
 
-Return the first result in json format using filter_by arguments.
+Return the first result in JSON format using filter_by arguments.
 
 Example:
 
@@ -794,9 +795,9 @@ def score(course):
     return Score.fs_json_first(class_name=course)
 ```
 
-## `__fs_previous_field_value__`
+## __fs_previous_field_value__
 
-A dictionary of the previous field values before an update is applied from a dict, form or json update operation. Helpful
+A dictionary of the previous field values before an update is applied from a dict, form or JSON update operation. Helpful
 in the `__fs_verify__` method to see if field values are to be changed.
 
 Example:
@@ -810,7 +811,7 @@ def __fs_verify__(self, create=False):
 
 ## fs_request_create_form(kwargs)
 
-Use the contents of a Flask request form or request json data to create a item
+Use the contents of a Flask request form or request JSON data to create a item
 in the database.   Calls `__fs_verify__(create=True)`.  Returns the new item or throws error.
 Use kwargs to set the object properties of the newly created item.
 
@@ -828,7 +829,7 @@ def score(course_id):
 
 ## fs_request_update_form()
 
-Use the contents of a Flask request form or request json data to update an item
+Use the contents of a Flask request form or request JSON data to update an item
 in the database.   Calls `__fs_verify__()` and `__fs_can_update__()` to check
 if can update.  Returns True on success.
 
@@ -958,7 +959,7 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 
 ## Release Notes
 
-- 2.2.0 - Allow arg parameters to be used in `fs_get_delete_put_post` 'GET' as query filters
+- 2.2.0 - Allow arg parameters to be used in `fs_get_delete_put_post` 'GET' as query_by filters
 - 2.1.3 - Allow sorting by lambda
 - 2.1.2 - Fix readme table format
 - 2.1.1 - Improve sqlite JSON handling
@@ -986,8 +987,8 @@ Version 2.0.1 changes most of the properties, hooks and methods to use a more no
 - 1.1.0 - Suppress silly errors. Improve documentation.
 - 1.0.9 - Add kwargs to fs_request_create_form to pass Object props to be used when creating the Object instance
 - 1.0.8 - Cache introspection to improve performance.  All model definitions are cached after first use.  It is no longer possible to alter model definitions dynamically.
-- 1.0.7 - Add json request body support to post update.
-- 1.0.5 - Allow sorting of json lists.
+- 1.0.7 - Add JSON request body support to post update.
+- 1.0.5 - Allow sorting of JSON lists.
 
 ## Licensing
 
