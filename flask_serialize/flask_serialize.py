@@ -372,7 +372,7 @@ class FlaskSerializeMixin:
         if value in ["", None]:
             return {}
 
-        if type(value) == str:
+        if isinstance(value, str):
             return json.loads(value)
 
         if type(value) in FlaskSerializeMixin.__fs_json_types:
