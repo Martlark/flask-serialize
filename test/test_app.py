@@ -6,13 +6,12 @@ import unittest
 from http import HTTPStatus
 from datetime import datetime
 from pathlib import Path
-from sqlalchemy import text, exc
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import text
 
 import flask_unittest
 
 from flask_serialize import FlaskSerializeMixin
-from test.test_flask_app import app, db, Setting, SubSetting, SimpleModel, DateTest
+from test.test_flask_app import db, Setting, SubSetting, SimpleModel, DateTest
 
 
 def random_string(length=20):
@@ -43,6 +42,8 @@ class TestBase(flask_unittest.AppClientTestCase):
             db.create_all()
 
     def create_app(self):
+        from test.test_flask_app import app
+
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "Testing"
         app.config["WTF_CSRF_ENABLED"] = False
@@ -59,7 +60,8 @@ class TestAll(TestBase):
         Setting.__fs_order_by_field__ = "value"
         Setting.__fs_order_by_field_desc__ = None
 
-    def add_setting(self, client, key=random_string(), value="test-value", number=0):
+    @staticmethod
+    def add_setting(client, key=random_string(), value="test-value", number=0):
         rv = client.post(
             "/setting_add",
             data=dict(setting_type="test", key=key, value=value, number=number),

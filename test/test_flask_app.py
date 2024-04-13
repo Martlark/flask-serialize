@@ -23,7 +23,7 @@ from flask_serialize.flask_serialize import (
 )
 from flask_serialize.form_page import FormPageMixin
 
-app = Flask("test_app")
+app: Flask = Flask("test_app")
 app.testing = True
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -398,9 +398,9 @@ class Setting(FlaskSerializeMixin, FormPageMixin, db.Model):
     # convert types
     __fs_scheduled_date_format__ = "%Y-%m-%d %H:%M:%S"
     __fs_convert_types__ = {
-        str(bool): lambda v: "y"
-        if (type(v) == bool and v) or str(v).lower() == "true"
-        else "n",
+        str(bool): lambda v: (
+            "y" if (type(v) == bool and v) or str(v).lower() == "true" else "n"
+        ),
         str(int): lambda n: int(n) * 2,
         str(datetime): lambda n: datetime.strptime(
             n, Setting.__fs_scheduled_date_format__
